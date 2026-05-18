@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jackson Smart Scanner PRO</title>
+<title>ANPR Pro Scanner JST</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -27,7 +27,12 @@ margin-bottom:15px;
 backdrop-filter:blur(10px);
 }
 
-video{width:100%;border-radius:12px;background:black;}
+video{
+width:100%;
+border-radius:12px;
+background:black;
+filter: contrast(1.3) brightness(1.1) grayscale(1);
+}
 
 button{
 width:100%;
@@ -38,7 +43,6 @@ background:#0a2a43;
 color:white;
 font-weight:bold;
 margin-top:10px;
-cursor:pointer;
 }
 
 input{
@@ -50,11 +54,30 @@ border:none;
 }
 
 .step{color:#00d9ff;font-weight:bold;}
-
 .success{color:#00ff88}
 .error{color:#ff4d4d}
-
 pre{white-space:pre-wrap;font-size:13px;}
+
+.overlay{
+position:absolute;
+top:0;left:0;
+width:100%;
+height:100%;
+border:2px solid #00ff88;
+border-radius:12px;
+pointer-events:none;
+animation:pulse 1.5s infinite;
+}
+
+@keyframes pulse{
+0%{opacity:0.3}
+50%{opacity:1}
+100%{opacity:0.3}
+}
+
+.video-wrap{
+position:relative;
+}
 </style>
 </head>
 
@@ -62,14 +85,17 @@ pre{white-space:pre-wrap;font-size:13px;}
 
 <div class="container">
 
-<h2>🚗 jsckson smart tech PRO ANPR + ID Scanner for rua vista ext36</h2>
+<h2>🚗 JST ANPR PRO SCANNER (FAST MODE)</h2>
 
 <div class="card">
-<p class="step" id="stepText">STEP 1: Scan Vehicle Disc</p>
+<p class="step" id="stepText">STEP 1: Scan Vehicle Disc (CENTER ZONE ONLY)</p>
 
+<div class="video-wrap">
 <video id="video" autoplay playsinline muted></video>
+<div class="overlay"></div>
+</div>
 
-<button onclick="scanDoc()">SCAN DOCUMENT</button>
+<button onclick="scanDoc()">SCAN DOCUMENT (FAST)</button>
 
 <p id="status">Starting camera...</p>
 
@@ -88,16 +114,9 @@ pre{white-space:pre-wrap;font-size:13px;}
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {
-getFirestore,
-collection,
-addDoc,
-query,
-where,
-getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* FIREBASE */
 const firebaseConfig = {
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
 authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
@@ -120,122 +139,112 @@ audio:false
 });
 video.srcObject = stream;
 await video.play();
-document.getElementById("status").innerText = "Camera Ready ✔";
+document.getElementById("status").innerText = "AI Camera Ready ✔";
 }
 startCamera();
 
-/* FAST OCR CLEAN */
-function clean(t){
-return t.toUpperCase()
+/* OCR CLEAN */
+function clean(text){
+return text.toUpperCase()
 .replace(/[^A-Z0-9\s]/g," ")
 .replace(/\s+/g," ")
 .trim();
 }
 
-/* VEHICLE PARSER (FIXED) */
-function parseVehicle(text){
+/* STRONG PLATE DETECTION */
+function extractPlate(text){
+const t = clean(text);
 
-let t = clean(text);
+// STRICT SA FORMAT ONLY
+const match = t.match(/\b[A-Z]{2,3}\s?\d{3,6}\b/);
+return match ? match[0] : "";
+}
 
-/* VIN */
-let vin = (t.match(/\b[A-HJ-NPR-Z0-9]{17}\b/) || [])[0] || "";
-
-/* SA PLATE FIX (STRICT ONLY REAL PLATES) */
-let plate = (t.match(/\b([A-Z]{2,3}\s?\d{3,6}\s?(GP|MP|EC|ZN|KZN|WC|FS|NW|LP|NC))\b/) || [])[0] || "";
-
-/* MAKE ONLY */
+/* CAR MAKE ONLY */
+function extractMake(text){
 const brands = [
-"TOYOTA","MAZDA","BMW","MERCEDES","FORD","VW",
-"VOLKSWAGEN","NISSAN","HYUNDAI","KIA","AUDI",
-"ISUZU","SUZUKI","RENAULT","HONDA","CHEVROLET",
-"MITSUBISHI","LEXUS","JEEP","VOLVO","PORSCHE",
-"JAGUAR","LAND ROVER"
+"TOYOTA","BMW","MERCEDES","FORD","VW","VOLKSWAGEN",
+"NISSAN","HYUNDAI","KIA","AUDI","ISUZU","HONDA",
+"CHEVROLET","MITSUBISHI","LEXUS","JEEP","VOLVO"
 ];
 
-let make = "";
+text = clean(text);
 for(let b of brands){
-if(t.includes(b)){
-make = b;
-break;
+if(text.includes(b)) return b;
 }
-}
-
-return {vin, plate, make};
+return "";
 }
 
-/* ID PARSER (FIXED STRICT) */
-function parseID(text){
+/* FAST OCR (IMPORTANT FIX) */
+async function fastOCR(image){
 
-let t = clean(text);
-
-/* ONLY VALID SA ID */
-let idNumber = (t.match(/\b\d{13}\b/) || [])[0] || "";
-
-return {idNumber};
+return await Tesseract.recognize(image,"eng",{
+tessedit_char_whitelist:
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
+tessedit_pageseg_mode: 7
+});
 }
 
-/* SCAN (OPTIMIZED FAST) */
+/* SCAN FUNCTION */
 window.scanDoc = async function(){
 
-document.getElementById("status").innerText = "Scanning...";
+document.getElementById("status").innerText = "Scanning AI...";
 
 const canvas = document.createElement("canvas");
 
-/* SPEED BOOST */
-canvas.width = video.videoWidth / 2;
-canvas.height = video.videoHeight / 2;
+/* CROPPED CENTER AREA (IMPORTANT FIX) */
+canvas.width = video.videoWidth * 0.7;
+canvas.height = video.videoHeight * 0.4;
 
 const ctx = canvas.getContext("2d");
-ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-const img = canvas.toDataURL("image/jpeg",0.6);
+ctx.drawImage(
+video,
+video.videoWidth*0.15,
+video.videoHeight*0.3,
+canvas.width,
+canvas.height,
+0,0,
+canvas.width,
+canvas.height
+);
 
-/* FAST OCR MODE */
-const res = await Tesseract.recognize(img,"eng",{
-logger:()=>{}
-});
+const img = canvas.toDataURL("image/jpeg",0.8);
 
-let text = res.data.text;
+/* FAST OCR */
+const res = await fastOCR(img);
+const text = res.data.text;
 
-/* STEP 1 */
+/* STEP LOGIC */
 if(step === 1){
 
-vehicleData = parseVehicle(text);
+vehicleData = {
+plate: extractPlate(text),
+make: extractMake(text)
+};
 
 document.getElementById("output").innerText =
 JSON.stringify(vehicleData,null,2);
 
-document.getElementById("stepText").innerText =
-"STEP 2: Scan ID Document";
-
 document.getElementById("status").innerHTML =
-"<span class='success'>Vehicle Captured ✔</span>";
+"<span class='success'>PLATE + MAKE CAPTURED ✔</span>";
 
 step = 2;
+document.getElementById("stepText").innerText =
+"STEP 2: Scan ID DOCUMENT";
 
-/* STEP 2 */
 }else{
 
-let owner = parseID(text);
-
-/* FIRESTORE SAVE (STRUCTURED FIXED) */
 await addDoc(collection(db,"vehicleAccessLogs"),{
-
-vin: vehicleData.vin,
-plate: vehicleData.plate,
-carMake: vehicleData.make,
-
-idNumber: owner.idNumber,
-
+vehicle: vehicleData,
 time: Date.now()
-
 });
 
 document.getElementById("output").innerText =
-JSON.stringify({vehicleData,owner},null,2);
+JSON.stringify(vehicleData,null,2);
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Saved Successfully ✔</span>";
+"<span class='success'>SAVED ✔ FAST MODE ACTIVE</span>";
 
 step = 1;
 vehicleData = null;
@@ -248,22 +257,22 @@ document.getElementById("stepText").innerText =
 /* SECURITY PANEL */
 window.verify = async function(){
 
-let code = document.getElementById("code").value;
+const code = document.getElementById("code").value;
 
 const q = query(collection(db,"visitorCodes"),where("code","==",code));
 const snap = await getDocs(q);
 
 if(snap.empty){
 document.getElementById("verifyOut").innerHTML =
-"<span class='error'>INVALID CODE ❌</span>";
+"<span class='error'>INVALID CODE</span>";
 return;
 }
 
-let d = snap.docs[0].data();
+const d = snap.docs[0].data();
 
 if(Date.now() > d.expiry){
 document.getElementById("verifyOut").innerHTML =
-"<span class='error'>EXPIRED CODE ❌</span>";
+"<span class='error'>EXPIRED</span>";
 }else{
 document.getElementById("verifyOut").innerHTML =
 "<span class='success'>ACCESS GRANTED ✔</span>";
