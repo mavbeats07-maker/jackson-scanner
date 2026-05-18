@@ -31,14 +31,23 @@ header{
 text-align:center;
 padding:20px;
 background:rgba(0,0,0,0.55);
+border-bottom:1px solid rgba(255,255,255,0.1);
 }
 
 header h1{
-font-size:30px;
+font-size:28px;
+letter-spacing:2px;
+}
+
+header p{
+margin-top:5px;
+opacity:0.9;
 }
 
 .container{
 padding:15px;
+max-width:700px;
+margin:auto;
 }
 
 .card{
@@ -54,12 +63,13 @@ video{
 width:100%;
 border-radius:12px;
 background:black;
+margin-top:10px;
 }
 
 button{
 width:100%;
 padding:14px;
-margin-top:10px;
+margin-top:12px;
 border:none;
 border-radius:10px;
 background:#0a2a43;
@@ -67,6 +77,7 @@ color:white;
 font-weight:bold;
 cursor:pointer;
 font-size:15px;
+transition:0.3s;
 }
 
 button:hover{
@@ -79,10 +90,11 @@ padding:12px;
 margin-top:10px;
 border:none;
 border-radius:10px;
+font-size:15px;
 }
 
 .success{
-color:#00ff88;
+color:#00ff99;
 font-weight:bold;
 margin-top:10px;
 }
@@ -95,31 +107,32 @@ margin-top:10px;
 
 .step{
 margin-top:10px;
+font-size:15px;
 font-weight:bold;
 color:#00d9ff;
 }
 
-table{
-width:100%;
-border-collapse:collapse;
+.status-box{
+background:rgba(255,255,255,0.08);
+padding:10px;
+border-radius:10px;
 margin-top:10px;
-}
-
-th{
-background:#0a2a43;
-padding:10px;
-}
-
-td{
-background:white;
-color:black;
-padding:10px;
-border-bottom:1px solid #ddd;
+font-size:14px;
 }
 
 pre{
 white-space:pre-wrap;
 font-size:13px;
+margin-top:10px;
+color:white;
+}
+
+footer{
+text-align:center;
+padding:15px;
+font-size:12px;
+background:rgba(0,0,0,0.7);
+margin-top:20px;
 }
 
 </style>
@@ -128,8 +141,11 @@ font-size:13px;
 <body>
 
 <header>
-<h1>🚗 JST ESTATE SECURITY SYSTEM</h1>
-<p>Rua Vista Ext 36 • Visitor Verification & AI Scanner</p>
+
+<h1>🚗 JST ESTATE SECURITY</h1>
+
+<p>Rua Vista Ext 36 • Vehicle & Visitor Verification</p>
+
 </header>
 
 <div class="container">
@@ -137,19 +153,25 @@ font-size:13px;
 <!-- SCANNER -->
 <div class="card">
 
-<h2>📷 Vehicle + ID Scanner</h2>
-
-<video id="video" autoplay playsinline muted></video>
+<h2>📷 Smart Scanner</h2>
 
 <p class="step" id="scanStep">
 STEP 1: Scan Vehicle Disc
 </p>
 
+<video id="video" autoplay playsinline muted></video>
+
 <button onclick="scanDocument()">
 SCAN DOCUMENT
 </button>
 
-<p id="scanStatus"></p>
+<div class="status-box">
+
+<p id="scanStatus">
+Starting camera...
+</p>
+
+</div>
 
 <pre id="scanOutput"></pre>
 
@@ -158,46 +180,30 @@ SCAN DOCUMENT
 <!-- SECURITY PANEL -->
 <div class="card">
 
-<h2>🛡 Security Verification Panel</h2>
+<h2>🛡 Security Verification</h2>
 
 <input
+type="text"
 id="verifyCode"
 placeholder="Enter Resident Access Code"
 >
 
 <button onclick="verifyVisitorCode()">
-VERIFY ACCESS CODE
+VERIFY ACCESS
 </button>
 
 <div id="verifyResult"></div>
 
 </div>
 
-<!-- ADMIN PANEL -->
-<div class="card">
-
-<h2>🧑‍💻 Admin Vehicle Records</h2>
-
-<table>
-
-<thead>
-<tr>
-<th>VIN</th>
-<th>Plate</th>
-<th>Make</th>
-<th>ID Number</th>
-<th>Owner</th>
-<th>Time</th>
-</tr>
-</thead>
-
-<tbody id="tableBody"></tbody>
-
-</table>
-
 </div>
 
-</div>
+<footer>
+
+THIS SYSTEM REMAINS PROPERTY OF JACKSON SMART TECHNOLOGIES (PTY) LTD |
+REG 2026/320361/07
+
+</footer>
 
 <script type="module">
 
@@ -210,13 +216,11 @@ collection,
 addDoc,
 getDocs,
 query,
-where,
-onSnapshot,
-orderBy
+where
 }
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* FIREBASE */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
 
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
@@ -236,15 +240,17 @@ appId: "1:400637493049:web:8d349168400988493672e8"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* CAMERA */
+/* =========================
+   CAMERA START
+========================= */
+
 const video = document.getElementById("video");
 
 async function startCamera(){
 
 try{
 
-const stream =
-await navigator.mediaDevices.getUserMedia({
+const stream = await navigator.mediaDevices.getUserMedia({
 
 video:{
 facingMode:"environment"
@@ -258,9 +264,13 @@ video.srcObject = stream;
 
 await video.play();
 
+document.getElementById("scanStatus").innerText =
+"Camera Ready ✔";
+
 }catch(err){
 
-alert("Camera access denied");
+document.getElementById("scanStatus").innerText =
+"Camera Access Denied ❌";
 
 }
 
@@ -269,47 +279,114 @@ alert("Camera access denied");
 startCamera();
 
 /* =========================
-   2 STEP SCAN SYSTEM
+   GLOBAL STATE
 ========================= */
 
 let currentVehicle = null;
 let currentStep = 1;
 
-/* VEHICLE PARSER */
+/* =========================
+   SOUTH AFRICAN DISC PARSER
+========================= */
+
 function parseVehicle(text){
 
-let vin =
-text.match(/[A-HJ-NPR-Z0-9]{17}/i)?.[0] || "";
+text = text.toUpperCase();
 
-let plate =
-text.match(/[A-Z]{2,3}\s?\d{3,6}/i)?.[0] || "";
+/* VIN */
+let vin =
+text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/)?.[0] || "";
+
+/* SA PLATE */
+let platePatterns = [
+
+/[A-Z]{2,3}\s?[0-9]{3,6}\s?(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)/,
+
+/[A-Z]{2,3}[0-9]{3,6}(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)/,
+
+/[A-Z]{1,3}\s?[0-9]{1,4}\s?[A-Z]{1,3}\s?(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)/
+
+];
+
+let plate = "";
+
+for(let p of platePatterns){
+
+let found = text.match(p);
+
+if(found){
+
+plate = found[0];
+break;
+
+}
+
+}
+
+/* VEHICLE BRANDS */
+const brands = [
+
+"TOYOTA",
+"MAZDA",
+"BMW",
+"MERCEDES",
+"FORD",
+"VOLKSWAGEN",
+"VW",
+"NISSAN",
+"HYUNDAI",
+"KIA",
+"AUDI",
+"ISUZU",
+"SUZUKI",
+"RENAULT",
+"HAVAL",
+"CHERY",
+"MAHINDRA",
+"JEEP",
+"PEUGEOT",
+"CHEVROLET",
+"HONDA",
+"MITSUBISHI",
+"LEXUS",
+"LAND ROVER",
+"RANGE ROVER",
+"MINI",
+"FIAT",
+"OPEL",
+"VOLVO",
+"PORSCHE",
+"JAGUAR"
+
+];
 
 let make = "";
 
-if(text.toLowerCase().includes("toyota"))
-make = "Toyota";
+for(let brand of brands){
 
-if(text.toLowerCase().includes("bmw"))
-make = "BMW";
+if(text.includes(brand)){
 
-if(text.toLowerCase().includes("ford"))
-make = "Ford";
+make = brand;
+break;
 
-if(text.toLowerCase().includes("volkswagen"))
-make = "Volkswagen";
+}
 
-if(text.toLowerCase().includes("mercedes"))
-make = "Mercedes";
+}
 
 return {
-vin,
-plate,
-make
+
+vin: vin.trim(),
+plate: plate.trim(),
+make: make.trim()
+
 };
 
 }
 
-/* OWNER PARSER */
+/* =========================
+   ID PARSER
+========================= */
+
 function parseOwner(text){
 
 let idNumber =
@@ -319,13 +396,18 @@ let owner =
 text.match(/[A-Z][a-z]+\s[A-Z][a-z]+/)?.[0] || "";
 
 return {
+
 idNumber,
 owner
+
 };
 
 }
 
-/* SCAN */
+/* =========================
+   SCAN SYSTEM
+========================= */
+
 window.scanDocument = async function(){
 
 if(!video.videoWidth){
@@ -336,7 +418,7 @@ return;
 
 }
 
-document.getElementById("scanStatus").innerHTML =
+document.getElementById("scanStatus").innerText =
 "Scanning...";
 
 const canvas = document.createElement("canvas");
@@ -363,7 +445,10 @@ await Tesseract.recognize(image,"eng");
 
 const text = result.data.text;
 
-/* STEP 1 = DISC */
+/* =========================
+   STEP 1 = DISC
+========================= */
+
 if(currentStep === 1){
 
 currentVehicle = parseVehicle(text);
@@ -374,7 +459,7 @@ JSON.stringify(currentVehicle,null,2);
 
 document.getElementById("scanStatus").innerHTML =
 
-"<span class='success'>Vehicle Disc Captured ✔</span>";
+"Vehicle Disc Captured ✔";
 
 document.getElementById("scanStep").innerText =
 
@@ -384,11 +469,15 @@ currentStep = 2;
 
 }
 
-/* STEP 2 = ID */
+/* =========================
+   STEP 2 = OWNER ID
+========================= */
+
 else{
 
 let ownerData = parseOwner(text);
 
+/* SAVE FIREBASE */
 await addDoc(collection(db,"vehicleAccessLogs"),{
 
 vehicle: currentVehicle,
@@ -402,28 +491,30 @@ time: Date.now()
 document.getElementById("scanOutput").innerText =
 
 JSON.stringify({
+
 vehicle: currentVehicle,
 owner: ownerData
+
 },null,2);
 
 document.getElementById("scanStatus").innerHTML =
 
-"<span class='success'>Saved Successfully ✔</span>";
-
-currentStep = 1;
-
-currentVehicle = null;
+"Saved Successfully ✔";
 
 document.getElementById("scanStep").innerText =
 
 "STEP 1: Scan Vehicle Disc";
+
+currentStep = 1;
+
+currentVehicle = null;
 
 }
 
 };
 
 /* =========================
-   SECURITY VERIFY PANEL
+   VERIFY RESIDENT CODE
 ========================= */
 
 window.verifyVisitorCode = async function(){
@@ -484,53 +575,6 @@ Visitor: ${data.visitor}
 }
 
 };
-
-/* =========================
-   LIVE ADMIN TABLE
-========================= */
-
-const liveQuery = query(
-
-collection(db,"vehicleAccessLogs"),
-
-orderBy("time","desc")
-
-);
-
-onSnapshot(liveQuery,(snap)=>{
-
-let table =
-document.getElementById("tableBody");
-
-table.innerHTML = "";
-
-snap.forEach(doc=>{
-
-let d = doc.data();
-
-table.innerHTML += `
-
-<tr>
-
-<td>${d.vehicle?.vin || "-"}</td>
-
-<td>${d.vehicle?.plate || "-"}</td>
-
-<td>${d.vehicle?.make || "-"}</td>
-
-<td>${d.owner?.idNumber || "-"}</td>
-
-<td>${d.owner?.owner || "-"}</td>
-
-<td>${new Date(d.time).toLocaleString()}</td>
-
-</tr>
-
-`;
-
-});
-
-});
 
 </script>
 
