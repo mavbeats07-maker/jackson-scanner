@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JST Smart Estate AI Scanner</title>
+<title>Jackson smart Scanner</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -11,7 +11,7 @@
 body{
 margin:0;
 font-family:Segoe UI;
-background:linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.9)),
+background:linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.95)),
 url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
 background-size:cover;
 color:white;
@@ -22,22 +22,26 @@ color:white;
 .card{
 background:rgba(255,255,255,0.12);
 padding:15px;
-border-radius:12px;
+border-radius:14px;
 margin-bottom:15px;
 backdrop-filter:blur(10px);
 }
 
-video{width:100%;border-radius:12px;background:black;}
+video{
+width:100%;
+border-radius:12px;
+background:black;
+}
 
 button{
 width:100%;
 padding:14px;
-margin-top:10px;
 border:none;
 border-radius:10px;
 background:#0a2a43;
 color:white;
 font-weight:bold;
+margin-top:10px;
 }
 
 input{
@@ -62,16 +66,16 @@ pre{white-space:pre-wrap;font-size:13px;}
 
 <div class="container">
 
-<h2>🚗 JST AI ESTATE SCANNER</h2>
+<h2>🚗rua vista smart scanner</h2>
 
 <div class="card">
 <p class="step" id="stepText">STEP 1: Scan Vehicle Disc</p>
 
-<video id="video" autoplay playsinline></video>
+<video id="video" autoplay playsinline muted></video>
 
-<button onclick="scan()">SCAN</button>
+<button onclick="scanDoc()">SCAN DOCUMENT</button>
 
-<p id="status">Loading camera...</p>
+<p id="status">Starting camera...</p>
 
 <pre id="output"></pre>
 </div>
@@ -80,7 +84,7 @@ pre{white-space:pre-wrap;font-size:13px;}
 <div class="card">
 <h3>🔐 Security Panel</h3>
 <input id="code" placeholder="Enter Access Code">
-<button onclick="verify()">VERIFY</button>
+<button onclick="verify()">VERIFY CODE</button>
 <p id="verifyOut"></p>
 </div>
 
@@ -104,13 +108,14 @@ const db = getFirestore(app);
 const video = document.getElementById("video");
 
 let step = 1;
-let vehicle = null;
+let vehicleData = null;
 
 /* ================= CAMERA ================= */
-async function startCam(){
+async function startCamera(){
 try{
 const stream = await navigator.mediaDevices.getUserMedia({
-video:{facingMode:"environment"},audio:false
+video:{facingMode:"environment"},
+audio:false
 });
 video.srcObject = stream;
 await video.play();
@@ -119,49 +124,59 @@ document.getElementById("status").innerText = "Camera Ready ✔";
 document.getElementById("status").innerText = "Camera Error ❌";
 }
 }
-startCam();
+startCamera();
 
-/* ================= CLEAN TEXT ================= */
-function clean(t){
-return t.toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ");
+/* ================= CLEAN OCR ================= */
+function clean(text){
+return text.toUpperCase()
+.replace(/[^A-Z0-9\s]/g," ")
+.replace(/\s+/g," ")
+.trim();
 }
 
 /* ================= VEHICLE PARSER ================= */
 function parseVehicle(text){
 
-text = clean(text);
+let t = clean(text);
 
 /* VIN */
-let vin = text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/)?.[0] || "";
+let vin = t.match(/\b[A-HJ-NPR-Z0-9]{17}\b/)?.[0] || "";
 
-/* PLATE (ONLY SA FORMAT) */
-let plate = text.match(/\b([A-Z]{1,3}\s?\d{1,4}\s?(GP|MP|EC|ZN|KZN|WC|FS|NW|LP|NC))\b/)?.[0] || "";
+/* PLATE (STRICT SA ONLY) */
+let plate = t.match(/\b([A-Z]{1,3}\s?\d{1,4}\s?(GP|MP|EC|ZN|KZN|WC|FS|NW|LP|NC))\b/)?.[0] || "";
 
-/* MAKE (STRICT ONLY) */
+/* MAKE (STRICT LIST ONLY) */
 const brands = [
-"TOYOTA","MAZDA","BMW","MERCEDES","FORD","VW","VOLKSWAGEN",
-"NISSAN","HYUNDAI","KIA","AUDI","ISUZU","SUZUKI","RENAULT",
-"HONDA","CHEVROLET","MITSUBISHI","LEXUS","JEEP","VOLVO"
+"TOYOTA","MAZDA","BMW","MERCEDES","FORD","VOLKSWAGEN",
+"NISSAN","HYUNDAI","KIA","AUDI","ISUZU","SUZUKI",
+"RENAULT","HONDA","CHEVROLET","MITSUBISHI","LEXUS",
+"JEEP","VOLVO","PORSCHE","JAGUAR","LAND ROVER"
 ];
 
-let make = brands.find(b => text.includes(b)) || "";
+let make = "";
+for(let b of brands){
+if(t.includes(b)){
+make = b;
+break;
+}
+}
 
 return {vin, plate, make};
 }
 
-/* ================= ID PARSER (ONLY ID NUMBER) ================= */
+/* ================= ID PARSER ================= */
 function parseID(text){
 
-text = clean(text);
+let t = clean(text);
 
-/* ONLY 13 DIGIT SA ID */
-let idNumber = text.match(/\b\d{13}\b/)?.[0] || "";
+/* ONLY SA ID NUMBER */
+let idNumber = t.match(/\b\d{13}\b/)?.[0] || "";
 
 return {idNumber};
 }
 
-/* ================= SCAN ================= */
-window.scan = async function(){
+/* ================= SCAN FUNCTION ================= */
+window.scanDoc = async function(){
 
 document.getElementById("status").innerText = "Scanning...";
 
@@ -174,16 +189,19 @@ canvas.getContext("2d").drawImage(video,0,0);
 const img = canvas.toDataURL("image/jpeg",0.7);
 
 /* FAST OCR */
-const res = await Tesseract.recognize(img,"eng");
+const res = await Tesseract.recognize(img,"eng",{
+logger:()=>{}
+});
+
 const text = res.data.text;
 
 /* STEP 1 */
 if(step === 1){
 
-vehicle = parseVehicle(text);
+vehicleData = parseVehicle(text);
 
 document.getElementById("output").innerText =
-JSON.stringify(vehicle,null,2);
+JSON.stringify(vehicleData,null,2);
 
 document.getElementById("stepText").innerText =
 "STEP 2: Scan ID Document";
@@ -198,21 +216,20 @@ step = 2;
 
 let owner = parseID(text);
 
-/* SAVE TO FIREBASE */
 await addDoc(collection(db,"vehicleAccessLogs"),{
-vehicle,
-owner,
-time:Date.now()
+vehicle: vehicleData,
+owner: owner,
+time: Date.now()
 });
 
 document.getElementById("output").innerText =
-JSON.stringify({vehicle,owner},null,2);
+JSON.stringify({vehicleData,owner},null,2);
 
 document.getElementById("status").innerHTML =
 "<span class='success'>Saved Successfully ✔</span>";
 
 step = 1;
-vehicle = null;
+vehicleData = null;
 
 document.getElementById("stepText").innerText =
 "STEP 1: Scan Vehicle Disc";
@@ -229,7 +246,7 @@ const snap = await getDocs(q);
 
 if(snap.empty){
 document.getElementById("verifyOut").innerHTML =
-"<span class='error'>INVALID CODE</span>";
+"<span class='error'>INVALID CODE ❌</span>";
 return;
 }
 
@@ -237,7 +254,7 @@ let d = snap.docs[0].data();
 
 if(Date.now() > d.expiry){
 document.getElementById("verifyOut").innerHTML =
-"<span class='error'>EXPIRED CODE</span>";
+"<span class='error'>EXPIRED CODE ❌</span>";
 }else{
 document.getElementById("verifyOut").innerHTML =
 "<span class='success'>ACCESS GRANTED ✔</span>";
