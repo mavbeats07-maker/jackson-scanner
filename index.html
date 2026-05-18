@@ -21,7 +21,7 @@ padding:15px;
 background:rgba(0,0,0,0.6);
 }
 
-.container{padding:12px;max-width:800px;margin:auto;}
+.container{padding:12px;max-width:850px;margin:auto;}
 
 .card{
 background:rgba(255,255,255,0.1);
@@ -57,8 +57,10 @@ border:none;
 }
 
 .step{color:#00d9ff;font-weight:bold;}
-.success{color:#00ff99;font-weight:bold;}
-.error{color:#ff4d4d;font-weight:bold;}
+
+.good{color:#00ff99;font-weight:bold;}
+.bad{color:#ff4d4d;font-weight:bold;}
+
 pre{white-space:pre-wrap;}
 </style>
 </head>
@@ -66,32 +68,43 @@ pre{white-space:pre-wrap;}
 <body>
 
 <header>
-<h2>🚗 JACKSON PRO SCANNER</h2>
-<p>RUA VISTA EXT 36 Advanced Vehicle + ID Recognition Engine</p>
+<h2>🚗JACKSON SMART TECHNOLOGIES PRO SCANNER</h2>
+<p>RUA VISTA EXT36 Boomgate Intelligence System</p>
 </header>
 
 <div class="container">
 
+<!-- CAMERA -->
 <div class="card">
 
-<h3>📷 Live AI Camera</h3>
+<h3>📷 Vehicle & ID Scanner</h3>
 
 <video id="video" autoplay playsinline muted></video>
 
 <p class="step" id="stepText">STEP 1: Scan Vehicle Disc</p>
 
-<button onclick="scanDoc()">SCAN</button>
+<button onclick="scan()">SCAN</button>
 
-<p id="status">Starting AI engine...</p>
+<p id="status">Starting camera...</p>
 
 <pre id="output"></pre>
 
 </div>
 
+<!-- HOUSE NUMBER -->
 <div class="card">
-
 <h3>🏠 House Number</h3>
-<input id="house" placeholder="Enter house number (e.g. 12B)" />
+<input id="house" placeholder="Enter house number (e.g. 18A)" />
+</div>
+
+<!-- SECURITY PANEL (RESTORED) -->
+<div class="card">
+<h3>🔐 Security Verification Panel</h3>
+
+<input id="code" placeholder="Enter Access Code" />
+<button onclick="verifyCode()">VERIFY ACCESS</button>
+
+<div id="verifyResult"></div>
 
 </div>
 
@@ -100,7 +113,7 @@ pre{white-space:pre-wrap;}
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
@@ -116,7 +129,7 @@ const db = getFirestore(app);
 
 const video = document.getElementById("video");
 
-/* CAMERA (PRO BACK CAMERA LOCK) */
+/* CAMERA (ANPR STYLE) */
 async function startCamera(){
 try{
 const stream = await navigator.mediaDevices.getUserMedia({
@@ -131,7 +144,7 @@ audio:false
 video.srcObject = stream;
 await video.play();
 
-document.getElementById("status").innerText = "AI Camera Ready ✔";
+document.getElementById("status").innerText = "Camera Ready ✔";
 
 }catch(e){
 document.getElementById("status").innerText = "Camera blocked ❌";
@@ -140,74 +153,47 @@ document.getElementById("status").innerText = "Camera blocked ❌";
 
 startCamera();
 
-/* =========================
-   AI IMAGE ENHANCEMENT (SIMULATED)
-========================= */
-function enhanceImage(canvas){
-const ctx = canvas.getContext("2d");
-
-/* increase contrast / sharpness simulation */
-ctx.filter = "contrast(140%) brightness(110%)";
-ctx.drawImage(canvas,0,0);
-
-return canvas;
-}
-
-/* =========================
-   SMART AI PARSER
-========================= */
+/* CLEANER */
 function clean(text){
-return text.toUpperCase()
-.replace(/[^A-Z0-9\s]/g," ")
-.replace(/\s+/g," ")
-.trim();
+return text.toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ");
 }
 
-function parseVehicleAI(text){
+/* VEHICLE AI */
+function parseVehicle(text){
 
 text = clean(text);
 
-/* VIN */
 let vin = (text.match(/[A-HJ-NPR-Z0-9]{17}/) || [])[0] || "";
 
-/* PLATE (SA PROVINCES) */
+/* SA PLATE + PROVINCE */
 let plate = (text.match(/\b[A-Z]{2,3}\s?\d{3,6}\s?(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)\b/) || [])[0] || "";
 
-/* BRAND AI MAP */
-const brands = [
-"TOYOTA","BMW","MAZDA","MERCEDES","FORD","NISSAN","VW",
-"AUDI","KIA","HYUNDAI","HONDA","ISUZU","VOLVO","RENAULT",
-"CHEVROLET","JEEP","LAND ROVER"
-];
-
+/* BRAND AI */
+const brands = ["TOYOTA","BMW","MAZDA","MERCEDES","FORD","NISSAN","VW","AUDI","KIA","HYUNDAI","HONDA","ISUZU"];
 let make = brands.find(b => text.includes(b)) || "";
 
-return { vin, plate, make };
+return {vin, plate, make};
 }
 
-function parseIDAI(text){
+/* ID AI */
+function parseID(text){
 
 text = clean(text);
 
-/* ID */
 let id = (text.match(/\b\d{13}\b/) || [])[0] || "";
-
-/* NAME (improved heuristic) */
 let name = (text.match(/\b[A-Z]{3,}\s[A-Z]{3,}\b/) || [])[0] || "";
 
-return { id, name };
+return {id, name};
 }
 
-/* STEP ENGINE */
+/* STEP SYSTEM */
 let step = 1;
-let vehicle = null;
+let vehicleData = null;
 
-/* =========================
-   SCAN FUNCTION
-========================= */
-window.scanDoc = async function(){
+/* SCAN */
+window.scan = async function(){
 
-document.getElementById("status").innerText = "AI Scanning...";
+document.getElementById("status").innerText = "AI Processing...";
 
 const canvas = document.createElement("canvas");
 canvas.width = video.videoWidth;
@@ -216,56 +202,75 @@ canvas.height = video.videoHeight;
 const ctx = canvas.getContext("2d");
 ctx.drawImage(video,0,0);
 
-enhanceImage(canvas);
-
 const image = canvas.toDataURL("image/jpeg",0.95);
 
 const result = await Tesseract.recognize(image,"eng");
 const text = result.data.text;
 
-/* STEP 1 VEHICLE */
+/* STEP 1 */
 if(step === 1){
 
-vehicle = parseVehicleAI(text);
+vehicleData = parseVehicle(text);
 
 document.getElementById("output").innerText =
-JSON.stringify(vehicle,null,2);
+JSON.stringify(vehicleData,null,2);
 
 document.getElementById("stepText").innerText =
-"STEP 2: Scan ID Document";
+"STEP 2: Scan Driver ID";
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Vehicle captured ✔</span>";
+"<span class='good'>Vehicle Captured ✔</span>";
 
 step = 2;
 return;
 }
 
-/* STEP 2 ID */
-let owner = parseIDAI(text);
+/* STEP 2 */
+let owner = parseID(text);
 let house = document.getElementById("house").value;
 
 /* SAVE */
 await addDoc(collection(db,"vehicleAccessLogs"),{
-
-vehicle,
+vehicle: vehicleData,
 owner,
 house,
 time: Date.now()
-
 });
 
 document.getElementById("output").innerText =
-JSON.stringify({vehicle,owner,house},null,2);
+JSON.stringify({vehicleData,owner,house},null,2);
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Saved to AI System ✔</span>";
-
-document.getElementById("stepText").innerText =
-"STEP 1: Scan Vehicle Disc";
+"<span class='good'>Saved Successfully ✔</span>";
 
 step = 1;
-vehicle = null;
+vehicleData = null;
+
+};
+
+/* SECURITY PANEL */
+window.verifyCode = async function(){
+
+let code = document.getElementById("code").value;
+
+const q = query(collection(db,"visitorCodes"), where("code","==", code));
+const snap = await getDocs(q);
+
+if(snap.empty){
+document.getElementById("verifyResult").innerHTML =
+"<p class='bad'>INVALID ACCESS ❌</p>";
+return;
+}
+
+let data = snap.docs[0].data();
+
+if(Date.now() > data.expiry){
+document.getElementById("verifyResult").innerHTML =
+"<p class='bad'>EXPIRED CODE ❌</p>";
+}else{
+document.getElementById("verifyResult").innerHTML =
+"<p class='good'>ACCESS GRANTED ✔</p>";
+}
 
 };
 
