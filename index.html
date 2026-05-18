@@ -3,658 +3,269 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>JST Estate Security Scanner</title>
+<title>JST AI PRO SCANNER</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-}
-
 body{
-font-family:'Segoe UI',sans-serif;
-background:
-linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
-url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1950&q=80");
-background-size:cover;
-background-position:center;
-background-attachment:fixed;
-min-height:100vh;
+margin:0;
+font-family:Segoe UI;
+background:#0a2a43;
 color:white;
 }
 
 header{
-background:rgba(0,0,0,0.55);
-padding:20px;
 text-align:center;
-border-bottom:1px solid rgba(255,255,255,0.1);
-}
-
-header h1{
-font-size:30px;
-letter-spacing:2px;
-}
-
-header p{
-margin-top:5px;
-opacity:0.9;
-}
-
-.container{
 padding:15px;
-max-width:750px;
-margin:auto;
+background:rgba(0,0,0,0.6);
 }
+
+.container{padding:12px;max-width:800px;margin:auto;}
 
 .card{
-background:rgba(255,255,255,0.12);
-backdrop-filter:blur(10px);
-border:1px solid rgba(255,255,255,0.12);
+background:rgba(255,255,255,0.1);
 padding:15px;
-border-radius:16px;
+border-radius:12px;
 margin-bottom:15px;
+backdrop-filter:blur(10px);
 }
 
 video{
 width:100%;
-border-radius:14px;
+border-radius:12px;
 background:black;
-margin-top:10px;
 }
 
 button{
 width:100%;
 padding:14px;
-margin-top:12px;
+margin-top:10px;
 border:none;
 border-radius:10px;
-background:#0a2a43;
+background:#06304d;
 color:white;
 font-weight:bold;
-font-size:15px;
-cursor:pointer;
-transition:0.3s;
-}
-
-button:hover{
-background:#06304d;
 }
 
 input{
 width:100%;
 padding:12px;
 margin-top:10px;
+border-radius:10px;
 border:none;
-border-radius:10px;
-font-size:15px;
 }
 
-.step{
-margin-top:10px;
-font-weight:bold;
-color:#00d9ff;
-}
-
-.status{
-margin-top:10px;
-padding:10px;
-border-radius:10px;
-background:rgba(255,255,255,0.08);
-font-size:14px;
-}
-
-.success{
-color:#00ff88;
-font-weight:bold;
-}
-
-.error{
-color:#ff5e5e;
-font-weight:bold;
-}
-
-pre{
-white-space:pre-wrap;
-font-size:13px;
-margin-top:10px;
-color:white;
-}
-
-footer{
-margin-top:20px;
-text-align:center;
-padding:15px;
-background:rgba(0,0,0,0.75);
-font-size:12px;
-}
-
+.step{color:#00d9ff;font-weight:bold;}
+.success{color:#00ff99;font-weight:bold;}
+.error{color:#ff4d4d;font-weight:bold;}
+pre{white-space:pre-wrap;}
 </style>
 </head>
 
 <body>
 
 <header>
-
-<h1>🚗 JST ESTATE SECURITY</h1>
-
-<p>Rua Vista Ext 36 • Smart Vehicle Verification</p>
-
+<h2>🚗 JST AI PRO SCANNER</h2>
+<p>Advanced Vehicle + ID Recognition Engine</p>
 </header>
 
 <div class="container">
 
-<!-- SCANNER -->
 <div class="card">
 
-<h2>📷 Vehicle + ID Scanner</h2>
+<h3>📷 Live AI Camera</h3>
 
-<p class="step" id="scanStep">
-STEP 1: Scan Vehicle Disc
-</p>
+<video id="video" autoplay playsinline muted></video>
 
-<video
-id="video"
-autoplay
-playsinline
-muted>
-</video>
+<p class="step" id="stepText">STEP 1: Scan Vehicle Disc</p>
 
-<button onclick="scanDocument()">
-SCAN DOCUMENT
-</button>
+<button onclick="scanDoc()">SCAN</button>
 
-<div class="status">
+<p id="status">Starting AI engine...</p>
 
-<p id="scanStatus">
-Starting Camera...
-</p>
+<pre id="output"></pre>
 
 </div>
 
-<pre id="scanOutput"></pre>
-
-</div>
-
-<!-- SECURITY PANEL -->
 <div class="card">
 
-<h2>🛡 Security Verification</h2>
-
-<input
-type="text"
-id="verifyCode"
-placeholder="Enter Resident Access Code"
->
-
-<button onclick="verifyVisitorCode()">
-VERIFY ACCESS CODE
-</button>
-
-<div id="verifyResult"></div>
+<h3>🏠 House Number</h3>
+<input id="house" placeholder="Enter house number (e.g. 12B)" />
 
 </div>
 
 </div>
-
-<footer>
-
-THIS SYSTEM REMAINS PROPERTY OF JACKSON SMART TECHNOLOGIES (PTY) LTD |
-REG 2026/320361/07
-
-</footer>
 
 <script type="module">
 
-/* =========================
-   FIREBASE
-========================= */
-
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
-import {
-getFirestore,
-collection,
-addDoc,
-query,
-where,
-getDocs
-}
-from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-/* FIREBASE CONFIG */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
-
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
-
 authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
-
 projectId: "jackson-smart-technologi-1db26",
-
 storageBucket: "jackson-smart-technologi-1db26.firebasestorage.app",
-
 messagingSenderId: "400637493049",
-
 appId: "1:400637493049:web:8d349168400988493672e8"
-
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* =========================
-   CAMERA
-========================= */
-
 const video = document.getElementById("video");
 
+/* CAMERA (PRO BACK CAMERA LOCK) */
 async function startCamera(){
-
 try{
-
 const stream = await navigator.mediaDevices.getUserMedia({
-
 video:{
-facingMode:"environment"
+facingMode:{ ideal:"environment" },
+width:{ ideal:1920 },
+height:{ ideal:1080 }
 },
-
 audio:false
-
 });
 
 video.srcObject = stream;
-
 await video.play();
 
-document.getElementById("scanStatus").innerText =
-"Camera Ready ✔";
+document.getElementById("status").innerText = "AI Camera Ready ✔";
 
-}catch(err){
-
-document.getElementById("scanStatus").innerHTML =
-"<span class='error'>Camera Access Denied ❌</span>";
-
+}catch(e){
+document.getElementById("status").innerText = "Camera blocked ❌";
 }
-
 }
 
 startCamera();
 
 /* =========================
-   GLOBAL SCAN STATE
+   AI IMAGE ENHANCEMENT (SIMULATED)
 ========================= */
+function enhanceImage(canvas){
+const ctx = canvas.getContext("2d");
 
-let currentVehicle = null;
-let currentStep = 1;
+/* increase contrast / sharpness simulation */
+ctx.filter = "contrast(140%) brightness(110%)";
+ctx.drawImage(canvas,0,0);
 
-/* =========================
-   OCR CLEANER
-========================= */
-
-function cleanOCR(text){
-
-return text
-.replace(/\n/g," ")
-.replace(/[^A-Z0-9\s]/gi," ")
-.replace(/\s+/g," ")
-.trim();
-
+return canvas;
 }
 
 /* =========================
-   VEHICLE DISC PARSER
+   SMART AI PARSER
 ========================= */
+function clean(text){
+return text.toUpperCase()
+.replace(/[^A-Z0-9\s]/g," ")
+.replace(/\s+/g," ")
+.trim();
+}
 
-function parseVehicle(rawText){
+function parseVehicleAI(text){
 
-const text = cleanOCR(rawText.toUpperCase());
+text = clean(text);
 
 /* VIN */
-let vin = "";
+let vin = (text.match(/[A-HJ-NPR-Z0-9]{17}/) || [])[0] || "";
 
-const vinMatch =
-text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+/* PLATE (SA PROVINCES) */
+let plate = (text.match(/\b[A-Z]{2,3}\s?\d{3,6}\s?(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)\b/) || [])[0] || "";
 
-if(vinMatch){
-
-vin = vinMatch[0];
-
-}
-
-/* SA NUMBER PLATE */
-
-const provinceCodes =
-"(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)";
-
-const platePatterns = [
-
-new RegExp(`\\b[A-Z]{2,3}[0-9]{3,6}${provinceCodes}\\b`),
-
-new RegExp(`\\b[A-Z]{2,3}\\s?[0-9]{3,6}\\s?${provinceCodes}\\b`),
-
-new RegExp(`\\b[A-Z]{1,3}\\s?[0-9]{1,4}\\s?[A-Z]{1,3}\\s?${provinceCodes}\\b`)
-
-];
-
-let plate = "";
-
-for(let pattern of platePatterns){
-
-let found = text.match(pattern);
-
-if(found){
-
-plate = found[0]
-.replace(/\s+/g," ")
-.trim();
-
-break;
-
-}
-
-}
-
-/* VEHICLE MAKE */
-
+/* BRAND AI MAP */
 const brands = [
-
-"TOYOTA",
-"MAZDA",
-"BMW",
-"MERCEDES",
-"FORD",
-"VOLKSWAGEN",
-"VW",
-"NISSAN",
-"HYUNDAI",
-"KIA",
-"AUDI",
-"ISUZU",
-"SUZUKI",
-"RENAULT",
-"HAVAL",
-"CHERY",
-"MAHINDRA",
-"JEEP",
-"PEUGEOT",
-"CHEVROLET",
-"HONDA",
-"MITSUBISHI",
-"LEXUS",
-"LAND ROVER",
-"RANGE ROVER",
-"MINI",
-"FIAT",
-"OPEL",
-"VOLVO",
-"PORSCHE",
-"JAGUAR"
-
+"TOYOTA","BMW","MAZDA","MERCEDES","FORD","NISSAN","VW",
+"AUDI","KIA","HYUNDAI","HONDA","ISUZU","VOLVO","RENAULT",
+"CHEVROLET","JEEP","LAND ROVER"
 ];
 
-let make = "";
+let make = brands.find(b => text.includes(b)) || "";
 
-for(let brand of brands){
-
-if(text.includes(brand)){
-
-make = brand;
-break;
-
+return { vin, plate, make };
 }
 
+function parseIDAI(text){
+
+text = clean(text);
+
+/* ID */
+let id = (text.match(/\b\d{13}\b/) || [])[0] || "";
+
+/* NAME (improved heuristic) */
+let name = (text.match(/\b[A-Z]{3,}\s[A-Z]{3,}\b/) || [])[0] || "";
+
+return { id, name };
 }
 
-return {
-
-vin,
-plate,
-make
-
-};
-
-}
+/* STEP ENGINE */
+let step = 1;
+let vehicle = null;
 
 /* =========================
-   OWNER ID PARSER
+   SCAN FUNCTION
 ========================= */
+window.scanDoc = async function(){
 
-function parseOwner(rawText){
-
-const text = cleanOCR(rawText);
-
-/* ID NUMBER */
-
-let idNumber = "";
-
-const idMatch =
-text.match(/\b\d{13}\b/);
-
-if(idMatch){
-
-idNumber = idMatch[0];
-
-}
-
-/* OWNER NAME */
-
-let owner = "";
-
-const nameMatch =
-text.match(/\b[A-Z][a-z]{2,}\s[A-Z][a-z]{2,}\b/);
-
-if(nameMatch){
-
-owner = nameMatch[0];
-
-}
-
-return {
-
-idNumber,
-owner
-
-};
-
-}
-
-/* =========================
-   MAIN SCANNER
-========================= */
-
-window.scanDocument = async function(){
-
-if(!video.videoWidth){
-
-alert("Camera not ready");
-
-return;
-
-}
-
-document.getElementById("scanStatus").innerText =
-"Scanning Document...";
-
-/* TAKE PHOTO */
+document.getElementById("status").innerText = "AI Scanning...";
 
 const canvas = document.createElement("canvas");
-
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
 
 const ctx = canvas.getContext("2d");
+ctx.drawImage(video,0,0);
 
-ctx.drawImage(
-video,
-0,
-0,
-canvas.width,
-canvas.height
-);
+enhanceImage(canvas);
 
-const image =
-canvas.toDataURL("image/jpeg",0.9);
+const image = canvas.toDataURL("image/jpeg",0.95);
 
-/* OCR */
-
-const result = await Tesseract.recognize(
-
-image,
-"eng",
-{
-logger:m=>console.log(m)
-}
-
-);
-
+const result = await Tesseract.recognize(image,"eng");
 const text = result.data.text;
 
-/* =========================
-   STEP 1
-========================= */
+/* STEP 1 VEHICLE */
+if(step === 1){
 
-if(currentStep === 1){
+vehicle = parseVehicleAI(text);
 
-currentVehicle = parseVehicle(text);
+document.getElementById("output").innerText =
+JSON.stringify(vehicle,null,2);
 
-document.getElementById("scanOutput").innerText =
+document.getElementById("stepText").innerText =
+"STEP 2: Scan ID Document";
 
-JSON.stringify(currentVehicle,null,2);
+document.getElementById("status").innerHTML =
+"<span class='success'>Vehicle captured ✔</span>";
 
-document.getElementById("scanStatus").innerHTML =
-
-"<span class='success'>Vehicle Disc Captured ✔</span>";
-
-document.getElementById("scanStep").innerText =
-
-"STEP 2: Scan Owner ID";
-
-currentStep = 2;
-
+step = 2;
+return;
 }
 
-/* =========================
-   STEP 2
-========================= */
+/* STEP 2 ID */
+let owner = parseIDAI(text);
+let house = document.getElementById("house").value;
 
-else{
-
-let ownerData = parseOwner(text);
-
-/* SAVE FIREBASE */
-
+/* SAVE */
 await addDoc(collection(db,"vehicleAccessLogs"),{
 
-vehicle: currentVehicle,
-
-owner: ownerData,
-
+vehicle,
+owner,
+house,
 time: Date.now()
 
 });
 
-document.getElementById("scanOutput").innerText =
+document.getElementById("output").innerText =
+JSON.stringify({vehicle,owner,house},null,2);
 
-JSON.stringify({
+document.getElementById("status").innerHTML =
+"<span class='success'>Saved to AI System ✔</span>";
 
-vehicle: currentVehicle,
-owner: ownerData
-
-},null,2);
-
-document.getElementById("scanStatus").innerHTML =
-
-"<span class='success'>Saved Successfully ✔</span>";
-
-document.getElementById("scanStep").innerText =
-
+document.getElementById("stepText").innerText =
 "STEP 1: Scan Vehicle Disc";
 
-currentStep = 1;
-currentVehicle = null;
-
-}
-
-};
-
-/* =========================
-   VERIFY VISITOR CODE
-========================= */
-
-window.verifyVisitorCode = async function(){
-
-let code =
-document.getElementById("verifyCode").value;
-
-if(!code){
-
-alert("Enter access code");
-
-return;
-
-}
-
-const q = query(
-
-collection(db,"visitorCodes"),
-
-where("code","==", code)
-
-);
-
-const snap = await getDocs(q);
-
-if(snap.empty){
-
-document.getElementById("verifyResult").innerHTML =
-
-"<p class='error'>INVALID CODE ❌</p>";
-
-return;
-
-}
-
-let data = snap.docs[0].data();
-
-/* EXPIRED */
-
-if(Date.now() > data.expiry){
-
-document.getElementById("verifyResult").innerHTML =
-
-"<p class='error'>ACCESS DENIED — CODE EXPIRED ❌</p>";
-
-}
-
-/* VALID */
-
-else{
-
-document.getElementById("verifyResult").innerHTML =
-
-`
-<p class="success">
-
-ACCESS GRANTED ✔
-
-<br><br>
-
-Resident: ${data.resident}
-
-<br>
-
-Visitor: ${data.visitor}
-
-</p>
-`;
-
-}
+step = 1;
+vehicle = null;
 
 };
 
