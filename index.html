@@ -11,7 +11,9 @@
 body{
 margin:0;
 font-family:Segoe UI;
-background:#0a2a43;
+background:linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.85)),
+url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
+background-size:cover;
 color:white;
 }
 
@@ -21,19 +23,19 @@ padding:15px;
 background:rgba(0,0,0,0.6);
 }
 
-.container{padding:12px;max-width:850px;margin:auto;}
+.container{padding:15px;max-width:900px;margin:auto;}
 
 .card{
-background:rgba(255,255,255,0.1);
+background:rgba(255,255,255,0.12);
 padding:15px;
 border-radius:12px;
-margin-bottom:15px;
+margin-top:15px;
 backdrop-filter:blur(10px);
 }
 
 video{
 width:100%;
-border-radius:12px;
+border-radius:10px;
 background:black;
 }
 
@@ -43,7 +45,7 @@ padding:14px;
 margin-top:10px;
 border:none;
 border-radius:10px;
-background:#06304d;
+background:#0a2a43;
 color:white;
 font-weight:bold;
 }
@@ -52,15 +54,12 @@ input{
 width:100%;
 padding:12px;
 margin-top:10px;
-border-radius:10px;
+border-radius:8px;
 border:none;
 }
 
-.step{color:#00d9ff;font-weight:bold;}
-
-.good{color:#00ff99;font-weight:bold;}
-.bad{color:#ff4d4d;font-weight:bold;}
-
+.success{color:#00ff88;font-weight:bold;}
+.error{color:#ff4d4d;font-weight:bold;}
 pre{white-space:pre-wrap;}
 </style>
 </head>
@@ -68,44 +67,32 @@ pre{white-space:pre-wrap;}
 <body>
 
 <header>
-<h2>🚗JACKSON SMART TECHNOLOGIES PRO SCANNER</h2>
-<p>RUA VISTA EXT36 Boomgate Intelligence System</p>
+<h2>🚔JACKSON SMART TECHNOLOGIES PRO SCANNER</h2>
+<p>RUA VISTA EXT 36 Vehicle + ID Smart Scanner</p>
 </header>
 
 <div class="container">
 
 <!-- CAMERA -->
 <div class="card">
-
-<h3>📷 Vehicle & ID Scanner</h3>
+<h3>📷 Live Scanner</h3>
 
 <video id="video" autoplay playsinline muted></video>
 
-<p class="step" id="stepText">STEP 1: Scan Vehicle Disc</p>
+<button onclick="scan()">⚡ FAST SCAN (5 SEC)</button>
 
-<button onclick="scan()">SCAN</button>
-
-<p id="status">Starting camera...</p>
-
+<p id="status">Initializing camera...</p>
 <pre id="output"></pre>
-
 </div>
 
-<!-- HOUSE NUMBER -->
+<!-- SECURITY PANEL -->
 <div class="card">
-<h3>🏠 House Number</h3>
-<input id="house" placeholder="Enter house number (e.g. 18A)" />
-</div>
+<h3>🛡 Security Access Verification</h3>
 
-<!-- SECURITY PANEL (RESTORED) -->
-<div class="card">
-<h3>🔐 Security Verification Panel</h3>
+<input id="code" placeholder="Enter Access Code">
+<button onclick="verify()">VERIFY ACCESS</button>
 
-<input id="code" placeholder="Enter Access Code" />
-<button onclick="verifyCode()">VERIFY ACCESS</button>
-
-<div id="verifyResult"></div>
-
+<p id="verifyResult"></p>
 </div>
 
 </div>
@@ -113,7 +100,14 @@ pre{white-space:pre-wrap;}
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {
+getFirestore,
+collection,
+addDoc,
+query,
+where,
+getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
@@ -129,149 +123,106 @@ const db = getFirestore(app);
 
 const video = document.getElementById("video");
 
-/* CAMERA (ANPR STYLE) */
+/* CAMERA (BACK CAMERA FORCE) */
 async function startCamera(){
 try{
 const stream = await navigator.mediaDevices.getUserMedia({
-video:{
-facingMode:{ ideal:"environment" },
-width:{ ideal:1920 },
-height:{ ideal:1080 }
-},
-audio:false
+video:{facingMode:{exact:"environment"}}
 });
-
 video.srcObject = stream;
 await video.play();
-
-document.getElementById("status").innerText = "Camera Ready ✔";
-
+document.getElementById("status").innerText="Camera Ready ✔";
 }catch(e){
-document.getElementById("status").innerText = "Camera blocked ❌";
+const stream = await navigator.mediaDevices.getUserMedia({video:true});
+video.srcObject = stream;
 }
 }
-
 startCamera();
 
-/* CLEANER */
+/* FAST OCR CLEAN */
 function clean(text){
-return text.toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ");
+return text.toUpperCase().replace(/[^A-Z0-9\s]/g," ");
 }
 
-/* VEHICLE AI */
-function parseVehicle(text){
+/* SA PLATE DETECTION */
+function getPlate(text){
+const match = text.match(/\b[A-Z0-9]{2,3}\s?\d{3,6}\s?(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)\b/);
+return match ? match[0] : "";
+}
 
-text = clean(text);
-
-let vin = (text.match(/[A-HJ-NPR-Z0-9]{17}/) || [])[0] || "";
-
-/* SA PLATE + PROVINCE */
-let plate = (text.match(/\b[A-Z]{2,3}\s?\d{3,6}\s?(GP|MP|EC|FS|NW|NC|WC|LP|ZN|KZN)\b/) || [])[0] || "";
+/* VIN */
+function getVIN(text){
+const match = text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+return match ? match[0] : "";
+}
 
 /* BRAND AI */
-const brands = ["TOYOTA","BMW","MAZDA","MERCEDES","FORD","NISSAN","VW","AUDI","KIA","HYUNDAI","HONDA","ISUZU"];
-let make = brands.find(b => text.includes(b)) || "";
-
-return {vin, plate, make};
+function getBrand(text){
+const brands=["TOYOTA","BMW","MAZDA","MERCEDES","FORD","VW","VOLKSWAGEN","NISSAN","HYUNDAI","KIA"];
+return brands.find(b=>text.includes(b)) || "";
 }
 
-/* ID AI */
-function parseID(text){
-
-text = clean(text);
-
-let id = (text.match(/\b\d{13}\b/) || [])[0] || "";
-let name = (text.match(/\b[A-Z]{3,}\s[A-Z]{3,}\b/) || [])[0] || "";
-
-return {id, name};
+/* ID */
+function getID(text){
+const match = text.match(/\b\d{13}\b/);
+return match ? match[0] : "";
 }
 
-/* STEP SYSTEM */
-let step = 1;
-let vehicleData = null;
-
-/* SCAN */
+/* FAST SCAN */
 window.scan = async function(){
 
-document.getElementById("status").innerText = "AI Processing...";
+document.getElementById("status").innerText="Scanning... (5s mode)";
 
-const canvas = document.createElement("canvas");
-canvas.width = video.videoWidth;
-canvas.height = video.videoHeight;
+const canvas=document.createElement("canvas");
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
 
-const ctx = canvas.getContext("2d");
-ctx.drawImage(video,0,0);
+const ctx=canvas.getContext("2d");
+ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-const image = canvas.toDataURL("image/jpeg",0.95);
+const img=canvas.toDataURL("image/jpeg",0.7);
 
-const result = await Tesseract.recognize(image,"eng");
-const text = result.data.text;
+const res=await Tesseract.recognize(img,"eng");
+const text=clean(res.data.text);
 
-/* STEP 1 */
-if(step === 1){
-
-vehicleData = parseVehicle(text);
-
-document.getElementById("output").innerText =
-JSON.stringify(vehicleData,null,2);
-
-document.getElementById("stepText").innerText =
-"STEP 2: Scan Driver ID";
-
-document.getElementById("status").innerHTML =
-"<span class='good'>Vehicle Captured ✔</span>";
-
-step = 2;
-return;
-}
-
-/* STEP 2 */
-let owner = parseID(text);
-let house = document.getElementById("house").value;
-
-/* SAVE */
-await addDoc(collection(db,"vehicleAccessLogs"),{
-vehicle: vehicleData,
-owner,
-house,
-time: Date.now()
-});
-
-document.getElementById("output").innerText =
-JSON.stringify({vehicleData,owner,house},null,2);
-
-document.getElementById("status").innerHTML =
-"<span class='good'>Saved Successfully ✔</span>";
-
-step = 1;
-vehicleData = null;
-
+/* PARSE */
+const data={
+vin:getVIN(text),
+plate:getPlate(text),
+brand:getBrand(text),
+id:getID(text),
+time:Date.now()
 };
 
-/* SECURITY PANEL */
-window.verifyCode = async function(){
+document.getElementById("output").innerText=JSON.stringify(data,null,2);
 
-let code = document.getElementById("code").value;
+/* SAVE */
+await addDoc(collection(db,"vehicleAccessLogs"),data);
 
-const q = query(collection(db,"visitorCodes"), where("code","==", code));
-const snap = await getDocs(q);
+document.getElementById("status").innerHTML="<span class='success'>Saved ✔ FAST SCAN DONE</span>";
+};
+
+/* SECURITY VERIFY */
+window.verify=async function(){
+
+let code=document.getElementById("code").value;
+
+const q=query(collection(db,"visitorCodes"),where("code","==",code));
+const snap=await getDocs(q);
 
 if(snap.empty){
-document.getElementById("verifyResult").innerHTML =
-"<p class='bad'>INVALID ACCESS ❌</p>";
+document.getElementById("verifyResult").innerHTML="<span class='error'>INVALID CODE</span>";
 return;
 }
 
-let data = snap.docs[0].data();
+let d=snap.docs[0].data();
 
-if(Date.now() > data.expiry){
-document.getElementById("verifyResult").innerHTML =
-"<p class='bad'>EXPIRED CODE ❌</p>";
+if(Date.now()>d.expiry){
+document.getElementById("verifyResult").innerHTML="<span class='error'>EXPIRED</span>";
 }else{
-document.getElementById("verifyResult").innerHTML =
-"<p class='good'>ACCESS GRANTED ✔</p>";
+document.getElementById("verifyResult").innerHTML=
+"<span class='success'>ACCESS GRANTED ✔ "+d.visitor+"</span>";
 }
-
 };
 
 </script>
