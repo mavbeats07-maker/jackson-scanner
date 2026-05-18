@@ -3,33 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>jackson smart technologies</title>
+<title>JST Estate Security Scanner</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
 
-body{
+*{
 margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+body{
 font-family:Segoe UI;
-background:#0a2a43;
+background:
+linear-gradient(rgba(0,0,0,0.75),rgba(0,0,0,0.88)),
+url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1950&q=80");
+background-size:cover;
+background-position:center;
+background-attachment:fixed;
 color:white;
+min-height:100vh;
 }
 
 header{
 text-align:center;
-padding:12px;
-background:rgba(0,0,0,0.6);
+padding:20px;
+background:rgba(0,0,0,0.55);
 }
 
-.container{padding:10px;}
+header h1{
+font-size:30px;
+}
+
+.container{
+padding:15px;
+}
 
 .card{
-background:white;
-color:black;
-padding:12px;
-border-radius:12px;
-margin-bottom:12px;
+background:rgba(255,255,255,0.12);
+backdrop-filter:blur(10px);
+padding:15px;
+border-radius:15px;
+margin-bottom:15px;
+border:1px solid rgba(255,255,255,0.15);
 }
 
 video{
@@ -44,26 +62,51 @@ padding:14px;
 margin-top:10px;
 border:none;
 border-radius:10px;
-background:#06304d;
+background:#0a2a43;
 color:white;
 font-weight:bold;
-font-size:16px;
+cursor:pointer;
+font-size:15px;
 }
 
-button:active{
-transform:scale(0.98);
+button:hover{
+background:#06304d;
+}
+
+input{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:10px;
+}
+
+.success{
+color:#00ff88;
+font-weight:bold;
+margin-top:10px;
+}
+
+.error{
+color:#ff4d4d;
+font-weight:bold;
+margin-top:10px;
+}
+
+.step{
+margin-top:10px;
+font-weight:bold;
+color:#00d9ff;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
 margin-top:10px;
-font-size:13px;
 }
 
 th{
 background:#0a2a43;
-color:white;
 padding:10px;
 }
 
@@ -71,11 +114,12 @@ td{
 background:white;
 color:black;
 padding:10px;
+border-bottom:1px solid #ddd;
 }
 
-#status{
-margin-top:8px;
-font-size:14px;
+pre{
+white-space:pre-wrap;
+font-size:13px;
 }
 
 </style>
@@ -84,39 +128,71 @@ font-size:14px;
 <body>
 
 <header>
-<h2>🚗JACKSON SMART TECHNOLOGIES SCANNER</h2>
-<p>RUA VISTA EXT36 LOCKED</p>
+<h1>🚗 JST ESTATE SECURITY SYSTEM</h1>
+<p>Rua Vista Ext 36 • Visitor Verification & AI Scanner</p>
 </header>
 
 <div class="container">
 
+<!-- SCANNER -->
 <div class="card">
-<h3>📷 Camera Scanner</h3>
+
+<h2>📷 Vehicle + ID Scanner</h2>
 
 <video id="video" autoplay playsinline muted></video>
 
-<button onclick="capture()">📸 SCAN DOCUMENT</button>
+<p class="step" id="scanStep">
+STEP 1: Scan Vehicle Disc
+</p>
 
-<p id="status">Starting camera...</p>
+<button onclick="scanDocument()">
+SCAN DOCUMENT
+</button>
 
-<pre id="result"></pre>
+<p id="scanStatus"></p>
+
+<pre id="scanOutput"></pre>
+
 </div>
 
+<!-- SECURITY PANEL -->
 <div class="card">
-<h3>🧑‍💻 Live Data</h3>
+
+<h2>🛡 Security Verification Panel</h2>
+
+<input
+id="verifyCode"
+placeholder="Enter Resident Access Code"
+>
+
+<button onclick="verifyVisitorCode()">
+VERIFY ACCESS CODE
+</button>
+
+<div id="verifyResult"></div>
+
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="card">
+
+<h2>🧑‍💻 Admin Vehicle Records</h2>
 
 <table>
+
 <thead>
 <tr>
 <th>VIN</th>
 <th>Plate</th>
-<th>ID</th>
-<th>Model</th>
+<th>Make</th>
+<th>ID Number</th>
+<th>Owner</th>
 <th>Time</th>
 </tr>
 </thead>
 
 <tbody id="tableBody"></tbody>
+
 </table>
 
 </div>
@@ -125,61 +201,66 @@ font-size:14px;
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy }
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+import {
+getFirestore,
+collection,
+addDoc,
+getDocs,
+query,
+where,
+onSnapshot,
+orderBy
+}
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* FIREBASE */
 const firebaseConfig = {
+
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
+
 authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
+
 projectId: "jackson-smart-technologi-1db26",
+
 storageBucket: "jackson-smart-technologi-1db26.firebasestorage.app",
+
 messagingSenderId: "400637493049",
+
 appId: "1:400637493049:web:8d349168400988493672e8"
+
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* CAMERA */
 const video = document.getElementById("video");
 
-/* =========================
-   ✅ MOBILE CAMERA FIX (SAFE MODE)
-========================= */
 async function startCamera(){
-
-document.getElementById("status").innerText = "Requesting camera...";
 
 try{
 
-/* BEST MOBILE METHOD (NO 'exact') */
-const stream = await navigator.mediaDevices.getUserMedia({
-video: {
-facingMode: "environment"
+const stream =
+await navigator.mediaDevices.getUserMedia({
+
+video:{
+facingMode:"environment"
 },
-audio: false
+
+audio:false
+
 });
 
 video.srcObject = stream;
 
 await video.play();
 
-document.getElementById("status").innerText = "Camera ready ✔";
-
 }catch(err){
 
-console.log(err);
-
-/* LAST FALLBACK */
-try{
-const stream = await navigator.mediaDevices.getUserMedia({video:true});
-video.srcObject = stream;
-await video.play();
-document.getElementById("status").innerText = "Fallback camera active";
-}catch(e){
-document.getElementById("status").innerText = "Camera blocked ❌";
-}
+alert("Camera access denied");
 
 }
 
@@ -188,90 +269,263 @@ document.getElementById("status").innerText = "Camera blocked ❌";
 startCamera();
 
 /* =========================
-   OCR CLEAN PARSER
+   2 STEP SCAN SYSTEM
 ========================= */
-function parseText(text){
 
-let vin = text.match(/[A-HJ-NPR-Z0-9]{17}/i)?.[0] || "";
-let id = text.match(/\b\d{13}\b/)?.[0] || "";
-let plate = text.match(/[A-Z]{2,3}\s?\d{3,6}/i)?.[0] || "";
+let currentVehicle = null;
+let currentStep = 1;
 
-let model = "";
-if(text.toLowerCase().includes("toyota")) model="Toyota";
-if(text.toLowerCase().includes("bmw")) model="BMW";
-if(text.toLowerCase().includes("mercedes")) model="Mercedes";
+/* VEHICLE PARSER */
+function parseVehicle(text){
 
-return {vin,id,plate,model};
+let vin =
+text.match(/[A-HJ-NPR-Z0-9]{17}/i)?.[0] || "";
+
+let plate =
+text.match(/[A-Z]{2,3}\s?\d{3,6}/i)?.[0] || "";
+
+let make = "";
+
+if(text.toLowerCase().includes("toyota"))
+make = "Toyota";
+
+if(text.toLowerCase().includes("bmw"))
+make = "BMW";
+
+if(text.toLowerCase().includes("ford"))
+make = "Ford";
+
+if(text.toLowerCase().includes("volkswagen"))
+make = "Volkswagen";
+
+if(text.toLowerCase().includes("mercedes"))
+make = "Mercedes";
+
+return {
+vin,
+plate,
+make
+};
+
 }
 
-/* =========================
-   CAPTURE FUNCTION (FIXED)
-========================= */
-window.capture = async function(){
+/* OWNER PARSER */
+function parseOwner(text){
+
+let idNumber =
+text.match(/\b\d{13}\b/)?.[0] || "";
+
+let owner =
+text.match(/[A-Z][a-z]+\s[A-Z][a-z]+/)?.[0] || "";
+
+return {
+idNumber,
+owner
+};
+
+}
+
+/* SCAN */
+window.scanDocument = async function(){
 
 if(!video.videoWidth){
-document.getElementById("status").innerText = "Camera not ready...";
+
+alert("Camera not ready");
+
 return;
+
 }
 
-document.getElementById("status").innerText = "Scanning...";
+document.getElementById("scanStatus").innerHTML =
+"Scanning...";
 
 const canvas = document.createElement("canvas");
 
-/* FIX: proper scaling for mobile OCR */
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
 
 const ctx = canvas.getContext("2d");
-ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-const image = canvas.toDataURL("image/jpeg",0.8);
+ctx.drawImage(
+video,
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+const image =
+canvas.toDataURL("image/jpeg",0.9);
 
 /* OCR */
-const result = await Tesseract.recognize(image,"eng");
+const result =
+await Tesseract.recognize(image,"eng");
+
 const text = result.data.text;
 
-const parsed = parseText(text);
+/* STEP 1 = DISC */
+if(currentStep === 1){
 
-document.getElementById("result").innerText =
-JSON.stringify(parsed,null,2);
+currentVehicle = parseVehicle(text);
 
-/* SAVE FIREBASE */
+document.getElementById("scanOutput").innerText =
+
+JSON.stringify(currentVehicle,null,2);
+
+document.getElementById("scanStatus").innerHTML =
+
+"<span class='success'>Vehicle Disc Captured ✔</span>";
+
+document.getElementById("scanStep").innerText =
+
+"STEP 2: Scan Owner ID";
+
+currentStep = 2;
+
+}
+
+/* STEP 2 = ID */
+else{
+
+let ownerData = parseOwner(text);
+
 await addDoc(collection(db,"vehicleAccessLogs"),{
-vin: parsed.vin,
-idNumber: parsed.id,
-plate: parsed.plate,
-carModel: parsed.model,
-rawText: text,
+
+vehicle: currentVehicle,
+
+owner: ownerData,
+
 time: Date.now()
+
 });
 
-document.getElementById("status").innerText = "Saved ✔";
+document.getElementById("scanOutput").innerText =
+
+JSON.stringify({
+vehicle: currentVehicle,
+owner: ownerData
+},null,2);
+
+document.getElementById("scanStatus").innerHTML =
+
+"<span class='success'>Saved Successfully ✔</span>";
+
+currentStep = 1;
+
+currentVehicle = null;
+
+document.getElementById("scanStep").innerText =
+
+"STEP 1: Scan Vehicle Disc";
+
+}
 
 };
 
 /* =========================
-   LIVE TABLE
+   SECURITY VERIFY PANEL
 ========================= */
-const q = query(collection(db,"vehicleAccessLogs"), orderBy("time","desc"));
 
-onSnapshot(q,(snap)=>{
+window.verifyVisitorCode = async function(){
 
-const table = document.getElementById("tableBody");
+let code =
+document.getElementById("verifyCode").value;
+
+if(!code){
+
+alert("Enter code");
+
+return;
+
+}
+
+const q = query(
+
+collection(db,"visitorCodes"),
+
+where("code","==", code)
+
+);
+
+const snap = await getDocs(q);
+
+if(snap.empty){
+
+document.getElementById("verifyResult").innerHTML =
+
+"<p class='error'>INVALID CODE ❌</p>";
+
+return;
+
+}
+
+let data = snap.docs[0].data();
+
+if(Date.now() > data.expiry){
+
+document.getElementById("verifyResult").innerHTML =
+
+"<p class='error'>ACCESS DENIED — CODE EXPIRED ❌</p>";
+
+}else{
+
+document.getElementById("verifyResult").innerHTML =
+
+`
+<p class='success'>
+ACCESS GRANTED ✔
+<br><br>
+Resident: ${data.resident}
+<br>
+Visitor: ${data.visitor}
+</p>
+`;
+
+}
+
+};
+
+/* =========================
+   LIVE ADMIN TABLE
+========================= */
+
+const liveQuery = query(
+
+collection(db,"vehicleAccessLogs"),
+
+orderBy("time","desc")
+
+);
+
+onSnapshot(liveQuery,(snap)=>{
+
+let table =
+document.getElementById("tableBody");
+
 table.innerHTML = "";
 
 snap.forEach(doc=>{
 
-const d = doc.data();
+let d = doc.data();
 
 table.innerHTML += `
+
 <tr>
-<td>${d.vin || "-"}</td>
-<td>${d.plate || "-"}</td>
-<td>${d.idNumber || "-"}</td>
-<td>${d.carModel || "-"}</td>
+
+<td>${d.vehicle?.vin || "-"}</td>
+
+<td>${d.vehicle?.plate || "-"}</td>
+
+<td>${d.vehicle?.make || "-"}</td>
+
+<td>${d.owner?.idNumber || "-"}</td>
+
+<td>${d.owner?.owner || "-"}</td>
+
 <td>${new Date(d.time).toLocaleString()}</td>
+
 </tr>
+
 `;
 
 });
@@ -282,4 +536,3 @@ table.innerHTML += `
 
 </body>
 </html>
-  
