@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANPR Pro Scanner JST</title>
+<title>JST AI ANPR SCANNER</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -27,11 +27,33 @@ margin-bottom:15px;
 backdrop-filter:blur(10px);
 }
 
+.videoWrap{
+position:relative;
+}
+
 video{
 width:100%;
 border-radius:12px;
-background:black;
-filter: contrast(1.3) brightness(1.1) grayscale(1);
+
+/* 🔥 REAL SCAN FILTER (KEY UPGRADE) */
+filter: grayscale(1) contrast(2.2) brightness(1.2);
+}
+
+.overlay{
+position:absolute;
+top:0;left:0;
+width:100%;
+height:100%;
+border:2px solid #00ff88;
+border-radius:12px;
+animation:pulse 1.2s infinite;
+pointer-events:none;
+}
+
+@keyframes pulse{
+0%{opacity:0.3}
+50%{opacity:1}
+100%{opacity:0.3}
 }
 
 button{
@@ -58,26 +80,6 @@ border:none;
 .error{color:#ff4d4d}
 pre{white-space:pre-wrap;font-size:13px;}
 
-.overlay{
-position:absolute;
-top:0;left:0;
-width:100%;
-height:100%;
-border:2px solid #00ff88;
-border-radius:12px;
-pointer-events:none;
-animation:pulse 1.5s infinite;
-}
-
-@keyframes pulse{
-0%{opacity:0.3}
-50%{opacity:1}
-100%{opacity:0.3}
-}
-
-.video-wrap{
-position:relative;
-}
 </style>
 </head>
 
@@ -85,27 +87,29 @@ position:relative;
 
 <div class="container">
 
-<h2>🚗 JST ANPR PRO SCANNER (FAST MODE)</h2>
+<h2>🚗 JST AI DARK SCAN ANPR SYSTEM</h2>
 
 <div class="card">
-<p class="step" id="stepText">STEP 1: Scan Vehicle Disc (CENTER ZONE ONLY)</p>
 
-<div class="video-wrap">
+<p class="step" id="stepText">STEP 1: Scan Vehicle Disc</p>
+
+<div class="videoWrap">
 <video id="video" autoplay playsinline muted></video>
 <div class="overlay"></div>
 </div>
 
-<button onclick="scanDoc()">SCAN DOCUMENT (FAST)</button>
+<button onclick="scan()">SCAN (AI MODE)</button>
 
 <p id="status">Starting camera...</p>
 
 <pre id="output"></pre>
+
 </div>
 
 <div class="card">
 <h3>🔐 Security Panel</h3>
 <input id="code" placeholder="Enter Access Code">
-<button onclick="verify()">VERIFY CODE</button>
+<button onclick="verify()">VERIFY</button>
 <p id="verifyOut"></p>
 </div>
 
@@ -139,68 +143,67 @@ audio:false
 });
 video.srcObject = stream;
 await video.play();
-document.getElementById("status").innerText = "AI Camera Ready ✔";
+document.getElementById("status").innerText = "AI DARK SCAN READY ✔";
 }
 startCamera();
 
-/* OCR CLEAN */
-function clean(text){
-return text.toUpperCase()
+/* CLEAN TEXT */
+function clean(t){
+return t.toUpperCase()
 .replace(/[^A-Z0-9\s]/g," ")
 .replace(/\s+/g," ")
 .trim();
 }
 
-/* STRONG PLATE DETECTION */
-function extractPlate(text){
-const t = clean(text);
-
-// STRICT SA FORMAT ONLY
-const match = t.match(/\b[A-Z]{2,3}\s?\d{3,6}\b/);
-return match ? match[0] : "";
+/* PLATE ONLY */
+function getPlate(t){
+return clean(t).match(/\b[A-Z]{2,3}\s?\d{3,6}\b/)?.[0] || "";
 }
 
-/* CAR MAKE ONLY */
-function extractMake(text){
-const brands = [
+/* MAKE ONLY */
+function getMake(t){
+const brands=[
 "TOYOTA","BMW","MERCEDES","FORD","VW","VOLKSWAGEN",
 "NISSAN","HYUNDAI","KIA","AUDI","ISUZU","HONDA",
 "CHEVROLET","MITSUBISHI","LEXUS","JEEP","VOLVO"
 ];
 
-text = clean(text);
+t = clean(t);
 for(let b of brands){
-if(text.includes(b)) return b;
+if(t.includes(b)) return b;
 }
 return "";
 }
 
-/* FAST OCR (IMPORTANT FIX) */
-async function fastOCR(image){
+/* ID ONLY */
+function getID(t){
+return clean(t).match(/\b\d{13}\b/)?.[0] || "";
+}
 
-return await Tesseract.recognize(image,"eng",{
-tessedit_char_whitelist:
-"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ",
-tessedit_pageseg_mode: 7
+/* FAST OCR SETTINGS */
+async function ocr(img){
+return await Tesseract.recognize(img,"eng",{
+tessedit_pageseg_mode:7,
+logger:()=>{}
 });
 }
 
-/* SCAN FUNCTION */
-window.scanDoc = async function(){
+/* SCAN */
+window.scan = async function(){
 
-document.getElementById("status").innerText = "Scanning AI...";
+document.getElementById("status").innerText = "AI SCANNING...";
 
-const canvas = document.createElement("canvas");
+const canvas=document.createElement("canvas");
 
-/* CROPPED CENTER AREA (IMPORTANT FIX) */
-canvas.width = video.videoWidth * 0.7;
-canvas.height = video.videoHeight * 0.4;
+/* CENTER FOCUS ZONE */
+canvas.width = video.videoWidth*0.75;
+canvas.height = video.videoHeight*0.45;
 
 const ctx = canvas.getContext("2d");
 
 ctx.drawImage(
 video,
-video.videoWidth*0.15,
+video.videoWidth*0.12,
 video.videoHeight*0.3,
 canvas.width,
 canvas.height,
@@ -209,74 +212,86 @@ canvas.width,
 canvas.height
 );
 
-const img = canvas.toDataURL("image/jpeg",0.8);
+const img = canvas.toDataURL("image/jpeg",0.9);
 
-/* FAST OCR */
-const res = await fastOCR(img);
+const res = await ocr(img);
 const text = res.data.text;
 
-/* STEP LOGIC */
-if(step === 1){
+/* STEP 1 */
+if(step===1){
 
-vehicleData = {
-plate: extractPlate(text),
-make: extractMake(text)
-};
+const plate = getPlate(text);
+const make = getMake(text);
 
-document.getElementById("output").innerText =
-JSON.stringify(vehicleData,null,2);
-
+if(!plate && !make){
 document.getElementById("status").innerHTML =
-"<span class='success'>PLATE + MAKE CAPTURED ✔</span>";
-
-step = 2;
-document.getElementById("stepText").innerText =
-"STEP 2: Scan ID DOCUMENT";
-
-}else{
-
-await addDoc(collection(db,"vehicleAccessLogs"),{
-vehicle: vehicleData,
-time: Date.now()
-});
-
-document.getElementById("output").innerText =
-JSON.stringify(vehicleData,null,2);
-
-document.getElementById("status").innerHTML =
-"<span class='success'>SAVED ✔ FAST MODE ACTIVE</span>";
-
-step = 1;
-vehicleData = null;
-
-document.getElementById("stepText").innerText =
-"STEP 1: Scan Vehicle Disc";
-}
-};
-
-/* SECURITY PANEL */
-window.verify = async function(){
-
-const code = document.getElementById("code").value;
-
-const q = query(collection(db,"visitorCodes"),where("code","==",code));
-const snap = await getDocs(q);
-
-if(snap.empty){
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>INVALID CODE</span>";
+"<span class='error'>No disc detected</span>";
 return;
 }
 
-const d = snap.docs[0].data();
+vehicleData = {plate,make};
 
-if(Date.now() > d.expiry){
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>EXPIRED</span>";
-}else{
-document.getElementById("verifyOut").innerHTML =
-"<span class='success'>ACCESS GRANTED ✔</span>";
+document.getElementById("output").innerText =
+JSON.stringify(vehicleData,null,2);
+
+document.getElementById("status").innerHTML =
+"<span class='success'>DISC CAPTURED ✔</span>";
+
+document.getElementById("stepText").innerText =
+"STEP 2: Scan ID ONLY";
+
+step=2;
+return;
 }
+
+/* STEP 2 */
+const id = getID(text);
+
+if(!id){
+document.getElementById("status").innerHTML =
+"<span class='error'>Invalid ID scan</span>";
+return;
+}
+
+await addDoc(collection(db,"vehicleAccessLogs"),{
+vehicle:vehicleData,
+owner:{id},
+time:Date.now()
+});
+
+document.getElementById("output").innerText =
+JSON.stringify({vehicleData,id},null,2);
+
+document.getElementById("status").innerHTML =
+"<span class='success'>SAVED ✔</span>";
+
+step=1;
+vehicleData=null;
+
+document.getElementById("stepText").innerText =
+"STEP 1: Scan Vehicle Disc";
+};
+
+/* SECURITY */
+window.verify = async function(){
+
+const code=document.getElementById("code").value;
+
+const q=query(collection(db,"visitorCodes"),where("code","==",code));
+const snap=await getDocs(q);
+
+if(snap.empty){
+document.getElementById("verifyOut").innerHTML=
+"<span class='error'>INVALID</span>";
+return;
+}
+
+const d=snap.docs[0].data();
+
+document.getElementById("verifyOut").innerHTML=
+Date.now()>d.expiry
+? "<span class='error'>EXPIRED</span>"
+: "<span class='success'>ACCESS GRANTED ✔</span>";
 };
 
 </script>
