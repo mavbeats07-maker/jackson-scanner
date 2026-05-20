@@ -3,166 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JST Pro Scanner</title>
 
-<title>Jackson Smart Technologies Pro Scanner</title>
-
-<script type="module">
-import "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm";
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-}
-
 body{
-font-family:'Segoe UI',sans-serif;
-background:
-linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
-url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1950&q=80");
-background-size:cover;
-background-position:center;
-min-height:100vh;
+margin:0;
+font-family:Segoe UI;
+background:#111;
 color:white;
+text-align:center;
 }
 
 .container{
-max-width:950px;
+max-width:900px;
 margin:auto;
 padding:15px;
 }
 
-h2{
-margin-bottom:15px;
-text-align:center;
+video{
+width:100%;
+border-radius:12px;
+border:2px solid #00ff88;
 }
 
 .card{
-background:rgba(255,255,255,0.12);
+background:#1b1b1b;
 padding:15px;
-border-radius:16px;
-margin-bottom:15px;
-backdrop-filter:blur(10px);
-border:1px solid rgba(255,255,255,0.15);
-}
-
-.videoWrap{
-position:relative;
-overflow:hidden;
-border-radius:15px;
-}
-
-video{
-width:100%;
-border-radius:15px;
-background:black;
-filter:contrast(1.1) brightness(1.05);
-}
-
-.overlay{
-position:absolute;
-top:30%;
-left:15%;
-width:70%;
-height:22%;
-border:3px solid #00ff88;
 border-radius:12px;
-box-shadow:0 0 20px #00ff88;
-pointer-events:none;
-animation:pulse 1.2s infinite;
-}
-
-.scanLine{
-position:absolute;
-left:15%;
-width:70%;
-height:3px;
-background:#00ff88;
-top:30%;
-box-shadow:0 0 15px #00ff88;
-animation:scanMove 2s linear infinite;
-pointer-events:none;
-}
-
-@keyframes pulse{
-0%{opacity:.5}
-50%{opacity:1}
-100%{opacity:.5}
-}
-
-@keyframes scanMove{
-0%{top:30%}
-50%{top:50%}
-100%{top:30%}
+margin-top:15px;
 }
 
 button{
 width:100%;
-padding:14px;
+padding:12px;
+margin-top:10px;
 border:none;
 border-radius:10px;
 background:#0a2a43;
 color:white;
 font-weight:bold;
-margin-top:10px;
 cursor:pointer;
-font-size:15px;
 }
 
 button:hover{
 background:#06304d;
 }
 
-input{
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:10px;
-border:none;
-outline:none;
-}
-
-.step{
-color:#00d9ff;
-font-weight:bold;
-margin-bottom:10px;
-}
-
-.success{
+span{
 color:#00ff88;
 font-weight:bold;
 }
 
-.error{
-color:#ff4d4d;
-font-weight:bold;
-}
-
-.result{
-margin-top:15px;
-background:rgba(0,0,0,0.45);
-padding:12px;
-border-radius:10px;
-line-height:1.9;
-}
-
-.result span{
-color:#00ff88;
-font-weight:bold;
-}
-
-footer{
-text-align:center;
-padding:15px;
-background:rgba(0,0,0,0.75);
-margin-top:20px;
-font-size:14px;
-}
+.error{color:red;}
+.success{color:#00ff88;}
 
 </style>
 </head>
@@ -171,62 +68,21 @@ font-size:14px;
 
 <div class="container">
 
-<h2>🚗 Jackson Smart Technologies Pro Scanner</h2>
-
-<div class="card">
-
-<p class="step" id="stepText">
-STEP 1 : Scan Vehicle Disc Barcode
-</p>
-
-<div class="videoWrap">
+<h2>🚗 JST Vehicle Scanner</h2>
 
 <video id="video" autoplay playsinline muted></video>
 
-<div class="overlay"></div>
-<div class="scanLine"></div>
-
-</div>
-
-<button onclick="scanID()">
-SCAN SOUTH AFRICAN ID
-</button>
-
-<p id="status" style="margin-top:10px;">
-Starting scanner...
-</p>
-
-<div class="result" id="output">
-
-Plate : <span id="plate">-</span><br>
-Car Make : <span id="make">-</span><br>
-ID Number : <span id="idnum">-</span>
-
-</div>
-
-</div>
-
-<!-- ACCESS -->
-
 <div class="card">
-
-<h3>🔐 Security Panel</h3>
-
-<input id="code" placeholder="Enter Access Code">
-
-<button onclick="verify()">
-VERIFY ACCESS
-</button>
-
-<p id="verifyOut"></p>
-
+<p>Plate: <span id="plate">-</span></p>
+<p>Make: <span id="make">-</span></p>
+<p>ID: <span id="id">-</span></p>
 </div>
 
-</div>
+<button onclick="scanID()">SCAN SA ID</button>
 
-<footer>
-THIS SYSTEM REMAINS PROPERTY OF JACKSON SMART TECHNOLOGIES (PTY) LTD
-</footer>
+<p id="status">Starting...</p>
+
+</div>
 
 <script type="module">
 
@@ -239,140 +95,88 @@ from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
 getFirestore,
 collection,
-addDoc,
-query,
-where,
-getDocs
+addDoc
 }
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* FIREBASE */
-
 const firebaseConfig = {
-
-apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
-authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
-projectId: "jackson-smart-technologi-1db26"
-
+apiKey: "YOUR_KEY",
+authDomain: "YOUR_DOMAIN",
+projectId: "YOUR_PROJECT"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* VIDEO */
-
+/* ELEMENTS */
 const video = document.getElementById("video");
 
-/* BARCODE READER */
-
-const codeReader =
-new BrowserMultiFormatReader();
-
 let vehicleData = {};
-let barcodeDetected = false;
+let scanned = false;
 
-/* START CAMERA */
+/* ZXING */
+const reader = new BrowserMultiFormatReader();
 
-async function startScanner(){
+/* FORCE BACK CAMERA */
+async function start(){
 
 try{
 
 const devices =
 await BrowserMultiFormatReader.listVideoInputDevices();
 
-const selectedDeviceId =
-devices[0].deviceId;
+const backCamera =
+devices.find(d =>
+d.label.toLowerCase().includes("back")
+) || devices[0];
 
-codeReader.decodeFromVideoDevice(
+await reader.decodeFromVideoDevice(
 
-selectedDeviceId,
+backCamera.deviceId,
 video,
 
 (result,err)=>{
 
-if(result && !barcodeDetected){
+if(result && !scanned){
 
-barcodeDetected = true;
+scanned = true;
 
-const raw =
-result.text.toUpperCase();
+const raw = result.text.toUpperCase();
 
-console.log(raw);
-
-/* GET NUMBER PLATE */
-
-const plateMatch =
-raw.match(
-/\b[A-Z]{2,3}\d{2,6}(GP|MP|NW|FS|EC|NC|WC|KZN)\b/
-);
-
-/* VEHICLE MAKES */
+/* EXTRACT PLATE */
+const plate =
+raw.match(/[A-Z]{2,3}\d{2,6}(GP|MP|NW|FS|EC|NC|WC|KZN)/);
 
 const makes = [
-
-"TOYOTA",
-"BMW",
-"FORD",
-"VOLKSWAGEN",
-"VW",
-"MERCEDES",
-"AUDI",
-"NISSAN",
-"HYUNDAI",
-"KIA",
-"ISUZU",
-"HONDA",
-"MAZDA",
-"RENAULT"
-
+"TOYOTA","BMW","FORD","VW","VOLKSWAGEN",
+"MERCEDES","AUDI","NISSAN","HYUNDAI","KIA"
 ];
 
-let foundMake = "";
+let make = "";
 
 for(let m of makes){
-
 if(raw.includes(m)){
-
-foundMake = m;
-
+make = (m==="VW")?"VOLKSWAGEN":m;
 break;
-
 }
-
 }
-
-/* SAVE TEMP */
 
 vehicleData = {
-
-plate:
-plateMatch ? plateMatch[0] : "",
-
-make:
-foundMake || ""
-
+plate: plate ? plate[0] : "",
+make
 };
 
-/* SHOW */
-
 document.getElementById("plate").innerText =
-vehicleData.plate || "NOT FOUND";
+vehicleData.plate || "-";
 
 document.getElementById("make").innerText =
-vehicleData.make || "NOT FOUND";
+vehicleData.make || "-";
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Vehicle Barcode Scanned ✔</span>";
+"<span class='success'>Barcode Scanned ✔</span>";
 
-document.getElementById("stepText").innerText =
-"STEP 2 : Scan South African ID";
-
-setTimeout(()=>{
-
-barcodeDetected = false;
-
-},3000);
-
+setTimeout(()=>{ scanned=false; },3000);
 }
 
 }
@@ -380,66 +184,39 @@ barcodeDetected = false;
 );
 
 }catch(err){
-
 document.getElementById("status").innerHTML =
 "<span class='error'>Camera Failed ❌</span>";
-
+console.log(err);
 }
 
 }
 
-startScanner();
+start();
 
-/* CLEAN */
-
-function clean(text){
-
-return text
-.toUpperCase()
-.replace(/[^A-Z0-9]/g," ");
-
-}
-
-/* OCR ID */
-
-async function scanID(){
-
-document.getElementById("status").innerHTML =
-"Scanning ID...";
+/* OCR FOR ID */
+window.scanID = async function(){
 
 try{
 
-const canvas =
-document.createElement("canvas");
+document.getElementById("status").innerText =
+"Scanning ID...";
+
+const canvas = document.createElement("canvas");
 
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
 
-const ctx =
-canvas.getContext("2d");
+const ctx = canvas.getContext("2d");
 
-ctx.drawImage(
-video,
-0,
-0,
-canvas.width,
-canvas.height
-);
+ctx.drawImage(video,0,0);
 
-const img =
-canvas.toDataURL("image/jpeg",0.8);
+const img = canvas.toDataURL("image/jpeg");
 
-const result =
-await Tesseract.recognize(
-img,
-"eng",
-{
-logger:()=>{}
-}
-);
+const res =
+await Tesseract.recognize(img,"eng");
 
 const text =
-clean(result.data.text);
+res.data.text.replace(/\s+/g," ");
 
 const id =
 text.match(/\b\d{13}\b/);
@@ -447,93 +224,29 @@ text.match(/\b\d{13}\b/);
 if(!id){
 
 document.getElementById("status").innerHTML =
-"<span class='error'>Invalid ID ❌</span>";
-
+"<span class='error'>ID Not Found</span>";
 return;
 
 }
 
-/* DISPLAY */
-
-document.getElementById("idnum").innerText =
-id[0];
+document.getElementById("id").innerText = id[0];
 
 /* SAVE FIREBASE */
+await addDoc(collection(db,"vehicleAccessLogs"),{
 
-await addDoc(
-collection(db,"vehicleAccessLogs"),
-{
-
-vehicle:{
-plate:vehicleData.plate || "",
-make:vehicleData.make || ""
-},
-
-owner:{
-idNumber:id[0]
-},
-
+vehicle:vehicleData,
+owner:{ idNumber:id[0] },
 time:Date.now()
 
-}
-);
+});
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Saved Successfully ✔</span>";
+"<span class='success'>Saved ✔</span>";
 
 }catch(err){
-
+console.log(err);
 document.getElementById("status").innerHTML =
-"<span class='error'>ID Scan Failed ❌</span>";
-
-}
-
-}
-
-/* VERIFY ACCESS */
-
-window.verify = async function(){
-
-const code =
-document.getElementById("code").value.trim();
-
-if(!code){
-
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>Enter Code</span>";
-
-return;
-
-}
-
-const q = query(
-collection(db,"visitorCodes"),
-where("code","==",code)
-);
-
-const snap = await getDocs(q);
-
-if(snap.empty){
-
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>INVALID CODE ❌</span>";
-
-return;
-
-}
-
-const d = snap.docs[0].data();
-
-if(Date.now() > d.expiry){
-
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>CODE EXPIRED ❌</span>";
-
-}else{
-
-document.getElementById("verifyOut").innerHTML =
-"<span class='success'>ACCESS GRANTED ✔</span>";
-
+"<span class='error'>ID Scan Failed</span>";
 }
 
 };
