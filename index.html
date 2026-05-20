@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jackson smart technologies pro HD scanner</title>
+<title>JST Smart Scanner (SECURE FIXED)</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
-/* KEEP YOUR ORIGINAL STYLE (UNCHANGED) */
+/* ===== KEEP YOUR ORIGINAL STYLE ===== */
 *{margin:0;padding:0;box-sizing:border-box;}
 
 body{
@@ -68,17 +68,8 @@ animation:scanMove 2s linear infinite;
 pointer-events:none;
 }
 
-@keyframes pulse{
-0%{opacity:0.5}
-50%{opacity:1}
-100%{opacity:0.5}
-}
-
-@keyframes scanMove{
-0%{top:20%}
-50%{top:58%}
-100%{top:20%}
-}
+@keyframes pulse{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
+@keyframes scanMove{0%{top:20%}50%{top:58%}100%{top:20%}}
 
 button{
 width:100%;
@@ -90,10 +81,12 @@ color:white;
 font-weight:bold;
 margin-top:10px;
 cursor:pointer;
-font-size:15px;
 }
 
-button:hover{background:#06304d;}
+button:disabled{
+background:#333;
+cursor:not-allowed;
+}
 
 input{
 width:100%;
@@ -105,7 +98,6 @@ outline:none;
 }
 
 .step{color:#00d9ff;font-weight:bold;margin-bottom:10px;}
-
 .success{color:#00ff88;font-weight:bold;}
 .error{color:#ff4d4d;font-weight:bold;}
 
@@ -125,11 +117,12 @@ line-height:1.8;
 
 <div class="container">
 
-<h2>🚗Jackson smart technologies pro scanner</h2>
+<h2>🚗 JST SMART SCANNER (SECURE MODE)</h2>
 
+<!-- SCANNER -->
 <div class="card">
 
-<p class="step" id="stepText">STEP 1 : Scan Vehicle Disc</p>
+<p class="step" id="stepText">STEP 1 : Scan Vehicle Disc (BARCODE ONLY)</p>
 
 <div class="videoWrap">
 <video id="video" autoplay playsinline muted></video>
@@ -137,32 +130,27 @@ line-height:1.8;
 <div class="scanLine"></div>
 </div>
 
-<button onclick="scan()">
-SCAN DOCUMENT
+<button onclick="scanID()" id="idBtn" disabled>
+SCAN ID (LOCKED)
 </button>
 
-<p id="status" style="margin-top:10px;">Starting camera...</p>
+<p id="status">Starting camera...</p>
 
 <div class="result" id="output">
-
 Plate : <span>-</span><br>
 Car Make : <span>-</span><br>
 ID Number : <span>-</span>
-
 </div>
 
 </div>
 
+<!-- SECURITY PANEL (UNCHANGED FEATURE) -->
 <div class="card">
-
 <h3>🔐 Security Panel</h3>
 
 <input id="code" placeholder="Enter Access Code">
-
 <button onclick="verify()">VERIFY ACCESS</button>
-
 <p id="verifyOut"></p>
-
 </div>
 
 </div>
@@ -193,16 +181,17 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const video = document.getElementById("video");
+const idBtn = document.getElementById("idBtn");
 
 let step = 1;
 let vehicleData = {};
-let scanned = false;
+let locked = false;
 
-/* CAMERA */
+/* CAMERA (BACK ONLY) */
 async function startCamera(){
 
 const stream = await navigator.mediaDevices.getUserMedia({
-video:{ facingMode:"environment" },
+video:{facingMode:{exact:"environment"}},
 audio:false
 });
 
@@ -216,40 +205,39 @@ document.getElementById("status").innerHTML =
 
 startCamera();
 
-/* 🔥 BARCODE FIRST (MAIN FIX) */
+/* ================= DISC BARCODE (STEP 1 ONLY) ================= */
 const reader = new BrowserMultiFormatReader();
 
-async function startBarcode(){
+async function startScanner(){
 
-const devices =
-await BrowserMultiFormatReader.listVideoInputDevices();
+const devices = await BrowserMultiFormatReader.listVideoInputDevices();
 
-const back = devices.find(d =>
-d.label.toLowerCase().includes("back")
-) || devices[0];
+const backCam =
+devices.find(d => d.label.toLowerCase().includes("back"))
+|| devices[0];
 
 reader.decodeFromVideoDevice(
-back.deviceId,
+backCam.deviceId,
 video,
 (result)=>{
 
-if(result && !scanned){
+if(!result || step !== 1 || locked) return;
 
-scanned = true;
+locked = true;
 
 const raw = result.text.toUpperCase();
 
-/* TRY GET PLATE FROM BARCODE */
-let plate =
-raw.match(/[A-Z]{2,3}\d{2,6}(GP|MP|FS|EC|WC|KZN|NW|LP|NC)/);
+/* plate detection (GP/MP etc) */
+const plateMatch =
+raw.match(/[A-Z]{2,3}\d{2,6}(GP|MP|FS|EC|WC|KZN|NW|NC|LP)/);
 
-let make = "";
-
+/* car make */
 const brands = [
 "TOYOTA","BMW","FORD","VW","VOLKSWAGEN",
 "MERCEDES","AUDI","NISSAN","HYUNDAI","KIA"
 ];
 
+let make = "";
 for(let b of brands){
 if(raw.includes(b)){
 make = b;
@@ -257,13 +245,8 @@ break;
 }
 }
 
-/* FALLBACK IF BARCODE FAILS */
-if(!plate){
-console.log("Barcode missing plate → fallback OCR");
-}
-
 vehicleData = {
-plate: plate ? plate[0] : "",
+plate: plateMatch ? plateMatch[0] : "",
 make
 };
 
@@ -274,31 +257,38 @@ ID Number : <span>-</span>
 `;
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Vehicle Scanned ✔</span>";
+"<span class='success'>DISC SCANNED ✔</span>";
 
-setTimeout(()=>{scanned=false;},3000);
+document.getElementById("stepText").innerText =
+"STEP 2 : Scan ID";
+
+step = 2;
+idBtn.disabled = false;
+
+setTimeout(()=> locked=false, 2000);
+
+});
 
 }
 
+startScanner();
+
+/* ================= ID SCAN (ONLY AFTER STEP 1) ================= */
+window.scanID = async function(){
+
+if(step !== 2){
+document.getElementById("status").innerHTML =
+"<span class='error'>Scan Disc First ❌</span>";
+return;
 }
-);
-
-}
-
-startBarcode();
-
-/* 🔥 ID SCAN (UNCHANGED BUT CLEANED) */
-window.scan = async function(){
 
 document.getElementById("status").innerHTML = "Scanning ID...";
 
 const canvas = document.createElement("canvas");
-
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
 
 const ctx = canvas.getContext("2d");
-
 ctx.drawImage(video,0,0);
 
 const img = canvas.toDataURL("image/jpeg",0.85);
@@ -311,7 +301,7 @@ const id = text.match(/\b\d{13}\b/);
 
 if(!id){
 document.getElementById("status").innerHTML =
-"<span class='error'>ID Not Found ❌</span>";
+"<span class='error'>ID NOT FOUND ❌</span>";
 return;
 }
 
@@ -323,16 +313,23 @@ ID Number : <span>${id[0]}</span>
 
 await addDoc(collection(db,"vehicleAccessLogs"),{
 vehicle:vehicleData,
-owner:{ idNumber:id[0] },
+owner:{idNumber:id[0]},
 time:Date.now()
 });
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Saved ✔</span>";
+"<span class='success'>SAVED ✔</span>";
+
+/* RESET */
+step = 1;
+vehicleData = {};
+idBtn.disabled = true;
+document.getElementById("stepText").innerText =
+"STEP 1 : Scan Vehicle Disc (BARCODE ONLY)";
 
 };
 
-/* VERIFY (UNCHANGED) */
+/* ================= SECURITY PANEL (UNCHANGED) ================= */
 window.verify = async function(){
 
 const code = document.getElementById("code").value.trim();
