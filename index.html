@@ -1,29 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JST Smart Scanner (SECURE FIXED)</title>
+
+<title>JST Smart Scanner (CONNECTED SECURITY MODE)</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
-/* ===== KEEP YOUR ORIGINAL STYLE ===== */
-*{margin:0;padding:0;box-sizing:border-box;}
+
+/* ===== ORIGINAL STYLE KEPT ===== */
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
 
 body{
 font-family:Segoe UI;
+
 background:
 linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
 url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
+
 background-size:cover;
 background-position:center;
+
 min-height:100vh;
 color:white;
 }
 
-.container{padding:15px;max-width:950px;margin:auto;}
+.container{
+padding:15px;
+max-width:950px;
+margin:auto;
+}
 
 .card{
 background:rgba(255,255,255,0.12);
@@ -34,13 +49,19 @@ backdrop-filter:blur(10px);
 border:1px solid rgba(255,255,255,0.12);
 }
 
-.videoWrap{position:relative;}
+.videoWrap{
+position:relative;
+}
 
 video{
 width:100%;
 border-radius:15px;
 background:black;
-filter: contrast(1.2) brightness(1.08) saturate(1.15);
+
+filter:
+contrast(1.2)
+brightness(1.08)
+saturate(1.15);
 }
 
 .overlay{
@@ -68,8 +89,17 @@ animation:scanMove 2s linear infinite;
 pointer-events:none;
 }
 
-@keyframes pulse{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
-@keyframes scanMove{0%{top:20%}50%{top:58%}100%{top:20%}}
+@keyframes pulse{
+0%{opacity:0.5}
+50%{opacity:1}
+100%{opacity:0.5}
+}
+
+@keyframes scanMove{
+0%{top:20%}
+50%{top:58%}
+100%{top:20%}
+}
 
 button{
 width:100%;
@@ -97,9 +127,21 @@ border:none;
 outline:none;
 }
 
-.step{color:#00d9ff;font-weight:bold;margin-bottom:10px;}
-.success{color:#00ff88;font-weight:bold;}
-.error{color:#ff4d4d;font-weight:bold;}
+.step{
+color:#00d9ff;
+font-weight:bold;
+margin-bottom:10px;
+}
+
+.success{
+color:#00ff88;
+font-weight:bold;
+}
+
+.error{
+color:#ff4d4d;
+font-weight:bold;
+}
 
 .result{
 margin-top:15px;
@@ -109,250 +151,586 @@ border-radius:10px;
 line-height:1.8;
 }
 
-.result span{color:#00ff88;font-weight:bold;}
+.result span{
+color:#00ff88;
+font-weight:bold;
+}
+
+/* ===== PANIC MODE ===== */
+
+body.panicMode{
+animation:panicFlash 0.5s infinite;
+}
+
+@keyframes panicFlash{
+0%{background:#220000;}
+50%{background:#660000;}
+100%{background:#220000;}
+}
+
+.mapFrame{
+width:100%;
+height:280px;
+border:none;
+border-radius:12px;
+margin-top:15px;
+}
+
 </style>
+
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>🚗 JST SMART SCANNER (SECURE MODE)</h2>
+<h2>🚗 JST SMART SCANNER (CONNECTED SECURITY MODE)</h2>
+
+<!-- LIVE PANIC ALERT -->
+<div
+class="card"
+id="panicCard"
+style="display:none;border:2px solid red;"
+>
+
+<h2 style="color:#ff4d4d;">
+🚨 LIVE PANIC ALERT
+</h2>
+
+<p id="panicInfo"></p>
+
+<iframe
+id="panicMap"
+class="mapFrame">
+</iframe>
+
+<button
+onclick="stopAlarm()"
+style="background:#b30000;"
+>
+STOP ALARM
+</button>
+
+</div>
 
 <!-- SCANNER -->
 <div class="card">
 
-<p class="step" id="stepText">STEP 1 : Scan Vehicle Disc (BARCODE ONLY)</p>
+<p class="step" id="stepText">
+STEP 1 : Scan Vehicle Disc (BARCODE ONLY)
+</p>
 
 <div class="videoWrap">
-<video id="video" autoplay playsinline muted></video>
+
+<video
+id="video"
+autoplay
+playsinline
+muted>
+</video>
+
 <div class="overlay"></div>
 <div class="scanLine"></div>
+
 </div>
 
-<button onclick="scanID()" id="idBtn" disabled>
+<button
+onclick="scanID()"
+id="idBtn"
+disabled
+>
 SCAN ID (LOCKED)
 </button>
 
-<p id="status">Starting camera...</p>
+<p id="status">
+Starting camera...
+</p>
 
 <div class="result" id="output">
+
 Plate : <span>-</span><br>
+
 Car Make : <span>-</span><br>
+
 ID Number : <span>-</span>
-</div>
 
 </div>
 
-<!-- SECURITY PANEL (UNCHANGED FEATURE) -->
+</div>
+
+<!-- SECURITY PANEL -->
 <div class="card">
+
 <h3>🔐 Security Panel</h3>
 
-<input id="code" placeholder="Enter Access Code">
-<button onclick="verify()">VERIFY ACCESS</button>
+<input
+id="code"
+placeholder="Enter Access Code"
+>
+
+<button onclick="verify()">
+VERIFY ACCESS
+</button>
+
 <p id="verifyOut"></p>
+
 </div>
 
 </div>
+
+<!-- ALARM -->
+<audio
+id="alarmSound"
+loop
+>
+<source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg">
+</audio>
 
 <script type="module">
 
 import { BrowserMultiFormatReader }
 from "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
 import {
 getFirestore,
 collection,
 addDoc,
 query,
 where,
-getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+getDocs,
+onSnapshot
+}
+from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* FIREBASE */
+/* ================= FIREBASE ================= */
+
 const firebaseConfig = {
+
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
+
 authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
+
 projectId: "jackson-smart-technologi-1db26"
+
 };
 
 const app = initializeApp(firebaseConfig);
+
 const db = getFirestore(app);
 
-const video = document.getElementById("video");
-const idBtn = document.getElementById("idBtn");
+/* ================= VARIABLES ================= */
+
+const video =
+document.getElementById("video");
+
+const idBtn =
+document.getElementById("idBtn");
+
+const alarm =
+document.getElementById("alarmSound");
 
 let step = 1;
+
 let vehicleData = {};
+
 let locked = false;
 
-/* CAMERA (BACK ONLY) */
+/* ================= CAMERA ================= */
+
 async function startCamera(){
 
-const stream = await navigator.mediaDevices.getUserMedia({
-video:{facingMode:{exact:"environment"}},
+const stream =
+await navigator.mediaDevices.getUserMedia({
+
+video:{
+facingMode:{exact:"environment"}
+},
+
 audio:false
+
 });
 
 video.srcObject = stream;
+
 await video.play();
 
 document.getElementById("status").innerHTML =
+
 "<span class='success'>Camera Ready ✔</span>";
 
 }
 
 startCamera();
 
-/* ================= DISC BARCODE (STEP 1 ONLY) ================= */
-const reader = new BrowserMultiFormatReader();
+/* ================= LIVE PANIC LISTENER ================= */
+
+onSnapshot(
+
+collection(db,"panicAlerts"),
+
+(snapshot)=>{
+
+snapshot.docChanges().forEach((change)=>{
+
+if(change.type !== "added") return;
+
+const data = change.doc.data();
+
+if(data.status !== "ACTIVE") return;
+
+/* PLAY ALARM */
+
+alarm.volume = 1;
+
+alarm.play();
+
+/* FLASH SCREEN */
+
+document.body.classList.add("panicMode");
+
+/* SHOW ALERT CARD */
+
+document.getElementById("panicCard").style.display =
+"block";
+
+/* DETAILS */
+
+document.getElementById("panicInfo").innerHTML =
+
+`
+<b>Emergency Alert Received</b><br><br>
+
+Latitude:
+${data.latitude}<br>
+
+Longitude:
+${data.longitude}<br><br>
+
+Resident Panic Signal Active
+`;
+
+/* LIVE MAP */
+
+document.getElementById("panicMap").src =
+
+"https://maps.google.com/maps?q="
++
+data.latitude
++
+","
++
+data.longitude
++
+"&z=16&output=embed";
+
+});
+
+}
+
+);
+
+/* ================= STOP ALARM ================= */
+
+window.stopAlarm = function(){
+
+alarm.pause();
+
+alarm.currentTime = 0;
+
+document.body.classList.remove("panicMode");
+
+document.getElementById("panicCard").style.display =
+"none";
+
+};
+
+/* ================= BARCODE SCANNER ================= */
+
+const reader =
+new BrowserMultiFormatReader();
 
 async function startScanner(){
 
-const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+const devices =
+await BrowserMultiFormatReader.listVideoInputDevices();
 
 const backCam =
-devices.find(d => d.label.toLowerCase().includes("back"))
+
+devices.find(d =>
+d.label.toLowerCase().includes("back")
+)
+
 || devices[0];
 
 reader.decodeFromVideoDevice(
+
 backCam.deviceId,
+
 video,
+
 (result)=>{
 
-if(!result || step !== 1 || locked) return;
+if(!result || step !== 1 || locked)
+return;
 
 locked = true;
 
-const raw = result.text.toUpperCase();
+const raw =
+result.text.toUpperCase();
 
-/* plate detection (GP/MP etc) */
+/* NUMBER PLATE */
+
 const plateMatch =
-raw.match(/[A-Z]{2,3}\d{2,6}(GP|MP|FS|EC|WC|KZN|NW|NC|LP)/);
 
-/* car make */
+raw.match(
+/[A-Z]{2,3}\d{2,6}(GP|MP|FS|EC|WC|KZN|NW|NC|LP)/
+);
+
+/* CAR MAKE */
+
 const brands = [
-"TOYOTA","BMW","FORD","VW","VOLKSWAGEN",
-"MERCEDES","AUDI","NISSAN","HYUNDAI","KIA"
+
+"TOYOTA",
+"BMW",
+"FORD",
+"VW",
+"VOLKSWAGEN",
+"MERCEDES",
+"AUDI",
+"NISSAN",
+"HYUNDAI",
+"KIA"
+
 ];
 
 let make = "";
+
 for(let b of brands){
+
 if(raw.includes(b)){
+
 make = b;
+
 break;
+
 }
+
 }
 
 vehicleData = {
-plate: plateMatch ? plateMatch[0] : "",
+
+plate:
+plateMatch ? plateMatch[0] : "",
+
 make
+
 };
 
-document.getElementById("output").innerHTML = `
-Plate : <span>${vehicleData.plate || "-"}</span><br>
-Car Make : <span>${vehicleData.make || "-"}</span><br>
-ID Number : <span>-</span>
+document.getElementById("output").innerHTML =
+
+`
+Plate :
+<span>${vehicleData.plate || "-"}</span><br>
+
+Car Make :
+<span>${vehicleData.make || "-"}</span><br>
+
+ID Number :
+<span>-</span>
 `;
 
 document.getElementById("status").innerHTML =
+
 "<span class='success'>DISC SCANNED ✔</span>";
 
 document.getElementById("stepText").innerText =
+
 "STEP 2 : Scan ID";
 
 step = 2;
+
 idBtn.disabled = false;
 
-setTimeout(()=> locked=false, 2000);
+setTimeout(()=>{
 
-});
+locked = false;
+
+},2000);
+
+}
+
+);
 
 }
 
 startScanner();
 
-/* ================= ID SCAN (ONLY AFTER STEP 1) ================= */
+/* ================= ID SCAN ================= */
+
 window.scanID = async function(){
 
 if(step !== 2){
+
 document.getElementById("status").innerHTML =
+
 "<span class='error'>Scan Disc First ❌</span>";
+
 return;
+
 }
 
-document.getElementById("status").innerHTML = "Scanning ID...";
+document.getElementById("status").innerHTML =
+"Scanning ID...";
 
-const canvas = document.createElement("canvas");
-canvas.width = video.videoWidth;
-canvas.height = video.videoHeight;
+/* CAPTURE FRAME */
 
-const ctx = canvas.getContext("2d");
+const canvas =
+document.createElement("canvas");
+
+canvas.width =
+video.videoWidth;
+
+canvas.height =
+video.videoHeight;
+
+const ctx =
+canvas.getContext("2d");
+
 ctx.drawImage(video,0,0);
 
-const img = canvas.toDataURL("image/jpeg",0.85);
+const img =
+canvas.toDataURL("image/jpeg",0.85);
 
-const res = await Tesseract.recognize(img,"eng");
+/* OCR */
 
-const text = res.data.text;
+const res =
+await Tesseract.recognize(img,"eng");
 
-const id = text.match(/\b\d{13}\b/);
+const text =
+res.data.text;
+
+const id =
+text.match(/\b\d{13}\b/);
 
 if(!id){
+
 document.getElementById("status").innerHTML =
+
 "<span class='error'>ID NOT FOUND ❌</span>";
+
 return;
+
 }
 
-document.getElementById("output").innerHTML = `
-Plate : <span>${vehicleData.plate || "-"}</span><br>
-Car Make : <span>${vehicleData.make || "-"}</span><br>
-ID Number : <span>${id[0]}</span>
+/* SHOW RESULT */
+
+document.getElementById("output").innerHTML =
+
+`
+Plate :
+<span>${vehicleData.plate || "-"}</span><br>
+
+Car Make :
+<span>${vehicleData.make || "-"}</span><br>
+
+ID Number :
+<span>${id[0]}</span>
 `;
 
-await addDoc(collection(db,"vehicleAccessLogs"),{
+/* SAVE LOG */
+
+await addDoc(
+
+collection(db,"vehicleAccessLogs"),
+
+{
 vehicle:vehicleData,
-owner:{idNumber:id[0]},
+
+owner:{
+idNumber:id[0]
+},
+
 time:Date.now()
-});
+}
+
+);
 
 document.getElementById("status").innerHTML =
+
 "<span class='success'>SAVED ✔</span>";
 
 /* RESET */
+
 step = 1;
+
 vehicleData = {};
+
 idBtn.disabled = true;
+
 document.getElementById("stepText").innerText =
+
 "STEP 1 : Scan Vehicle Disc (BARCODE ONLY)";
 
 };
 
-/* ================= SECURITY PANEL (UNCHANGED) ================= */
+/* ================= VERIFY ACCESS ================= */
+
 window.verify = async function(){
 
-const code = document.getElementById("code").value.trim();
+const code =
+document.getElementById("code").value.trim();
 
 const q = query(
+
 collection(db,"visitorCodes"),
+
 where("code","==",code)
+
 );
 
-const snap = await getDocs(q);
+const snap =
+await getDocs(q);
 
 if(snap.empty){
+
 document.getElementById("verifyOut").innerHTML =
+
 "<span class='error'>INVALID CODE ❌</span>";
+
 return;
+
 }
 
-const d = snap.docs[0].data();
+const d =
+snap.docs[0].data();
 
 document.getElementById("verifyOut").innerHTML =
+
 Date.now() > d.expiry
-? "<span class='error'>EXPIRED ❌</span>"
-: "<span class='success'>ACCESS GRANTED ✔</span>";
+
+?
+
+"<span class='error'>EXPIRED ❌</span>"
+
+:
+
+`
+<span class='success'>
+ACCESS GRANTED ✔
+</span><br><br>
+
+Resident:
+${d.resident}<br>
+
+Visitor:
+${d.visitor}<br>
+
+House:
+${d.houseNumber}
+`;
 
 };
 
