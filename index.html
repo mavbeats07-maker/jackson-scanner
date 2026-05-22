@@ -1,3 +1,7 @@
+<!-- =========================
+JST RESIDENT ACCESS SYSTEM
+========================= -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,24 +9,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>JST Smart Scanner</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<title>JST Resident Access System</title>
 
 <style>
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-}
-
 body{
+margin:0;
 font-family:Segoe UI;
 background:
-linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.9)),
-url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
+linear-gradient(rgba(10,42,67,0.92),rgba(10,42,67,0.92)),
+url("https://images.unsplash.com/photo-1518770660439-4636190af475");
 
 background-size:cover;
 background-position:center;
@@ -31,72 +27,84 @@ color:white;
 }
 
 .container{
-padding:15px;
-max-width:950px;
+max-width:900px;
 margin:auto;
+padding:20px;
 }
 
 .card{
-background:rgba(255,255,255,0.12);
-padding:15px;
-border-radius:15px;
-margin-bottom:15px;
-backdrop-filter:blur(10px);
+background:rgba(255,255,255,0.95);
+padding:20px;
+border-radius:16px;
+margin-bottom:20px;
+color:black;
+box-shadow:0 10px 25px rgba(0,0,0,0.3);
 }
 
-video{
+input,
+select,
+button{
 width:100%;
-border-radius:12px;
-background:black;
+padding:13px;
+margin-top:10px;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:15px;
 }
 
 button{
-width:100%;
-padding:14px;
-border:none;
-border-radius:10px;
 background:#0a2a43;
 color:white;
+border:none;
 font-weight:bold;
-margin-top:10px;
 cursor:pointer;
 }
 
-input{
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:8px;
-border:none;
+button:hover{
+background:#06304d;
 }
 
-.success{color:#00ff88;font-weight:bold;}
-.error{color:#ff4d4d;font-weight:bold;}
+.success{
+color:green;
+font-weight:bold;
+}
 
-.result{
+.error{
+color:red;
+font-weight:bold;
+}
+
+.code-box{
+background:#0a2a43;
+color:white;
+padding:18px;
+border-radius:12px;
+text-align:center;
+font-size:28px;
+font-weight:bold;
 margin-top:15px;
-background:rgba(0,0,0,0.4);
-padding:12px;
-border-radius:10px;
-line-height:1.8;
+letter-spacing:3px;
+}
+
+.panicBtn{
+background:#b30000;
+font-size:24px;
+padding:22px;
+animation:pulse 1s infinite;
 }
 
 iframe{
 width:100%;
-height:320px;
+height:350px;
 border:none;
 border-radius:12px;
 margin-top:15px;
 }
 
-body.alertMode{
-animation:flash 0.5s infinite;
-}
-
-@keyframes flash{
-0%{background:#220000;}
-50%{background:#880000;}
-100%{background:#220000;}
+@keyframes pulse{
+0%{transform:scale(1);}
+50%{transform:scale(1.03);}
+100%{transform:scale(1);}
 }
 
 </style>
@@ -107,96 +115,127 @@ animation:flash 0.5s infinite;
 
 <div class="container">
 
-<h2>🚗 JST SMART SECURITY SCANNER</h2>
+<!-- LOGIN -->
+<div class="card" id="auth">
 
-<!-- LIVE PANIC -->
-<div
-class="card"
-id="panicCard"
-style="display:none;border:2px solid red;"
->
+<h2>Resident Login</h2>
 
-<h2 style="color:#ff4d4d;">
-🚨 LIVE PANIC ALERT
-</h2>
-
-<p id="panicText"></p>
-
-<iframe id="panicMap"></iframe>
-
-<button
-onclick="stopAlarm()"
-style="background:#b30000;"
->
-STOP ALARM
-</button>
-
-</div>
-
-<!-- SCANNER -->
-<div class="card">
-
-<video
-id="video"
-autoplay
-playsinline
-muted>
-</video>
-
-<button
-onclick="scanID()"
-id="idBtn"
-disabled
->
-SCAN ID
-</button>
-
-<p id="status">
-Starting camera...
-</p>
-
-<div class="result" id="output">
-
-Plate : -<br>
-Car Make : -<br>
-ID Number : -
-
-</div>
-
-</div>
-
-<!-- VERIFY -->
-<div class="card">
-
-<h3>🔐 VERIFY ACCESS</h3>
+<input id="username" placeholder="Username">
 
 <input
-id="code"
-placeholder="Enter Access Code"
+id="password"
+type="password"
+placeholder="Password"
 >
 
-<button onclick="verify()">
-VERIFY
+<button onclick="login()">
+LOGIN
 </button>
 
-<p id="verifyOut"></p>
+<hr>
 
-</div>
+<h3>Create Resident Account</h3>
 
-</div>
-
-<!-- LOUD ALARM -->
-<audio
-id="alarm"
-loop
+<input
+id="newUsername"
+placeholder="Complex Username"
 >
-<source src="https://actions.google.com/sounds/v1/alarms/siren_whistle.ogg">
-</audio>
+
+<input
+id="newHouse"
+placeholder="House Number"
+>
+
+<input
+id="newPassword"
+type="password"
+placeholder="Strong Password"
+>
+
+<button onclick="createAccount()">
+CREATE ACCOUNT
+</button>
+
+<div id="authMsg"></div>
+
+</div>
+
+<!-- APP -->
+<div
+id="app"
+style="display:none;"
+>
+
+<!-- VISITOR -->
+<div class="card">
+
+<button onclick="logout()">
+LOGOUT
+</button>
+
+<h2>Generate Visitor Access</h2>
+
+<input
+id="residentName"
+placeholder="Resident Name"
+>
+
+<input
+id="houseNumber"
+placeholder="House Number"
+>
+
+<input
+id="visitorName"
+placeholder="Visitor Name"
+>
+
+<select id="hours">
+
+<option value="1">1 Hour</option>
+<option value="2">2 Hours</option>
+<option value="4">4 Hours</option>
+<option value="8">8 Hours</option>
+<option value="24">24 Hours</option>
+
+</select>
+
+<button onclick="generateCode()">
+GENERATE ACCESS CODE
+</button>
+
+<div id="generatedResult"></div>
+
+</div>
+
+<!-- PANIC -->
+<div class="card">
+
+<h2 style="color:red;">
+🚨 LIVE PANIC SYSTEM
+</h2>
+
+<button
+class="panicBtn"
+onclick="triggerPanic()"
+>
+🚨 ACTIVATE PANIC
+</button>
+
+<div id="panicOut"></div>
+
+<iframe
+id="map"
+style="display:none;">
+</iframe>
+
+</div>
+
+</div>
+
+</div>
 
 <script type="module">
-
-import { BrowserMultiFormatReader }
-from "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm";
 
 import { initializeApp }
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
@@ -207,18 +246,19 @@ collection,
 addDoc,
 query,
 where,
-getDocs,
-onSnapshot
+getDocs
 }
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+/* FIREBASE */
+
 const firebaseConfig = {
 
-apiKey:"AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
+apiKey:"YOUR_API_KEY",
 
-authDomain:"jackson-smart-technologi-1db26.firebaseapp.com",
+authDomain:"YOUR_DOMAIN",
 
-projectId:"jackson-smart-technologi-1db26"
+projectId:"YOUR_PROJECT_ID"
 
 };
 
@@ -226,305 +266,254 @@ const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app);
 
-const alarm =
-document.getElementById("alarm");
+/* CREATE ACCOUNT */
 
-/* LIVE PANIC LISTENER */
+window.createAccount = async function(){
 
-onSnapshot(
+const username =
+document.getElementById("newUsername").value.trim();
 
-collection(db,"panicAlerts"),
+const house =
+document.getElementById("newHouse").value.trim();
 
-(snapshot)=>{
+const password =
+document.getElementById("newPassword").value.trim();
 
-snapshot.docChanges().forEach((change)=>{
+if(
+username.length < 6 ||
+password.length < 8 ||
+!house
+){
 
-if(change.type !== "added") return;
+document.getElementById("authMsg").innerHTML =
 
-const data = change.doc.data();
-
-if(data.status !== "ACTIVE") return;
-
-/* RING LOUD */
-
-alarm.volume = 1;
-
-alarm.play();
-
-/* FLASH SCREEN */
-
-document.body.classList.add("alertMode");
-
-/* SHOW CARD */
-
-document.getElementById("panicCard").style.display =
-"block";
-
-/* SHOW LOCATION */
-
-document.getElementById("panicText").innerHTML =
-
-`
-🚨 PANIC RECEIVED<br><br>
-
-Latitude:
-${data.latitude}<br>
-
-Longitude:
-${data.longitude}
-`;
-
-/* LIVE MAP */
-
-document.getElementById("panicMap").src =
-
-"https://maps.google.com/maps?q="
-+
-data.latitude
-+
-","
-+
-data.longitude
-+
-"&z=17&output=embed";
-
-});
-
-}
-
-);
-
-/* STOP ALARM */
-
-window.stopAlarm = function(){
-
-alarm.pause();
-
-alarm.currentTime = 0;
-
-document.body.classList.remove("alertMode");
-
-document.getElementById("panicCard").style.display =
-"none";
-
-};
-
-/* CAMERA */
-
-const video =
-document.getElementById("video");
-
-const idBtn =
-document.getElementById("idBtn");
-
-let step = 1;
-
-let vehicleData = {};
-
-let locked = false;
-
-async function startCamera(){
-
-const stream =
-await navigator.mediaDevices.getUserMedia({
-
-video:{
-facingMode:{exact:"environment"}
-},
-
-audio:false
-
-});
-
-video.srcObject = stream;
-
-await video.play();
-
-document.getElementById("status").innerHTML =
-"<span class='success'>Camera Ready ✔</span>";
-
-}
-
-startCamera();
-
-/* BARCODE */
-
-const reader =
-new BrowserMultiFormatReader();
-
-async function startScanner(){
-
-const devices =
-await BrowserMultiFormatReader.listVideoInputDevices();
-
-const backCam =
-devices[0];
-
-reader.decodeFromVideoDevice(
-
-backCam.deviceId,
-video,
-
-(result)=>{
-
-if(!result || locked) return;
-
-locked = true;
-
-const raw =
-result.text.toUpperCase();
-
-const plate =
-raw.match(/[A-Z]{2,3}\d{2,6}(GP|MP|FS|EC|WC|KZN|NW|NC|LP)/);
-
-vehicleData = {
-plate:plate ? plate[0] : "",
-make:"Detected"
-};
-
-document.getElementById("output").innerHTML =
-
-`
-Plate :
-${vehicleData.plate}<br>
-
-Car Make :
-${vehicleData.make}<br>
-
-ID Number :
--
-`;
-
-idBtn.disabled = false;
-
-setTimeout(()=>{
-
-locked=false;
-
-},2000);
-
-}
-
-);
-
-}
-
-startScanner();
-
-/* ID OCR */
-
-window.scanID = async function(){
-
-const canvas =
-document.createElement("canvas");
-
-canvas.width =
-video.videoWidth;
-
-canvas.height =
-video.videoHeight;
-
-const ctx =
-canvas.getContext("2d");
-
-ctx.drawImage(video,0,0);
-
-const img =
-canvas.toDataURL("image/jpeg");
-
-const res =
-await Tesseract.recognize(img,"eng");
-
-const text =
-res.data.text;
-
-const id =
-text.match(/\b\d{13}\b/);
-
-if(!id){
-
-document.getElementById("status").innerHTML =
-"<span class='error'>ID NOT FOUND</span>";
+"<p class='error'>Use stronger details</p>";
 
 return;
 
 }
 
-document.getElementById("output").innerHTML =
+await addDoc(
+collection(db,"residentAccounts"),
+{
+username,
+house,
+password,
+created:Date.now()
+}
+);
 
-`
-Plate :
-${vehicleData.plate}<br>
+document.getElementById("authMsg").innerHTML =
 
-Car Make :
-${vehicleData.make}<br>
+"<p class='success'>Account Created ✔</p>";
 
-ID Number :
-${id[0]}
-`;
+};
+
+/* LOGIN */
+
+window.login = async function(){
+
+const u =
+document.getElementById("username").value.trim();
+
+const p =
+document.getElementById("password").value.trim();
+
+const q = query(
+collection(db,"residentAccounts"),
+where("username","==",u),
+where("password","==",p)
+);
+
+const snap = await getDocs(q);
+
+if(snap.empty){
+
+document.getElementById("authMsg").innerHTML =
+
+"<p class='error'>Invalid Login</p>";
+
+return;
+
+}
+
+document.getElementById("auth").style.display =
+"none";
+
+document.getElementById("app").style.display =
+"block";
+
+};
+
+/* LOGOUT */
+
+window.logout = function(){
+
+location.reload();
+
+};
+
+/* GENERATE VISITOR CODE */
+
+window.generateCode = async function(){
+
+let resident =
+document.getElementById("residentName").value;
+
+let house =
+document.getElementById("houseNumber").value;
+
+let visitor =
+document.getElementById("visitorName").value;
+
+let hours =
+document.getElementById("hours").value;
+
+if(!resident || !house || !visitor){
+
+alert("Fill all fields");
+
+return;
+
+}
+
+let code = Math.floor(
+100000 + Math.random()*900000
+);
+
+let expiry =
+Date.now() + hours * 3600000;
 
 await addDoc(
-collection(db,"vehicleAccessLogs"),
+collection(db,"visitorCodes"),
 {
-vehicle:vehicleData,
-owner:{idNumber:id[0]},
+resident,
+houseNumber:house,
+visitor,
+code:String(code),
+expiry,
+created:Date.now()
+}
+);
+
+document.getElementById("generatedResult").innerHTML =
+
+`
+<p class="success">
+Visitor Access Created ✔
+</p>
+
+<div class="code-box">
+${code}
+</div>
+`;
+
+};
+
+/* LIVE PANIC */
+
+let panicSending = false;
+
+window.triggerPanic = async function(){
+
+if(panicSending) return;
+
+panicSending = true;
+
+document.getElementById("panicOut").innerHTML =
+
+"<p class='error'>🚨 SENDING LIVE PANIC...</p>";
+
+if(!navigator.geolocation){
+
+alert("GPS NOT SUPPORTED");
+
+panicSending = false;
+
+return;
+
+}
+
+navigator.geolocation.getCurrentPosition(
+
+async(position)=>{
+
+try{
+
+const lat =
+position.coords.latitude;
+
+const lng =
+position.coords.longitude;
+
+const accuracy =
+position.coords.accuracy;
+
+/* SHOW MAP */
+
+document.getElementById("map").style.display =
+"block";
+
+document.getElementById("map").src =
+
+"https://maps.google.com/maps?q="
++
+lat
++
+","
++
+lng
++
+"&z=18&output=embed";
+
+/* SEND PANIC */
+
+await addDoc(
+collection(db,"panicAlerts"),
+{
+latitude:lat,
+longitude:lng,
+accuracy,
+status:"ACTIVE",
 time:Date.now()
 }
 );
 
-};
+document.getElementById("panicOut").innerHTML =
 
-/* VERIFY ACCESS */
+`
+<p class='error'>
+🚨 LIVE PANIC SENT
+</p>
+`;
 
-window.verify = async function(){
+}catch(e){
 
-const code =
-document.getElementById("code").value.trim();
+document.getElementById("panicOut").innerHTML =
 
-const q = query(
-collection(db,"visitorCodes"),
-where("code","==",code)
-);
-
-const snap =
-await getDocs(q);
-
-if(snap.empty){
-
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>INVALID ❌</span>";
-
-return;
+"<p class='error'>"+e.message+"</p>";
 
 }
 
-const d =
-snap.docs[0].data();
+panicSending = false;
 
-document.getElementById("verifyOut").innerHTML =
+},
 
-Date.now() > d.expiry
+()=>{
 
-?
+alert("ALLOW LOCATION ACCESS");
 
-"<span class='error'>EXPIRED ❌</span>"
+panicSending = false;
 
-:
+},
 
-`
-<span class='success'>
-ACCESS GRANTED ✔
-</span><br><br>
+{
+enableHighAccuracy:true,
+timeout:15000,
+maximumAge:0
+}
 
-Resident:
-${d.resident}<br>
-
-Visitor:
-${d.visitor}<br>
-
-House:
-${d.houseNumber}
-`;
+);
 
 };
 
