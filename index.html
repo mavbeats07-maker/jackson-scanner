@@ -287,29 +287,77 @@ document.getElementById("output").innerHTML =
 };
 
 /* ================= VERIFY ================= */
-window.verify = async function(){
+window.verify = async function () {
 
-const code = document.getElementById("code").value.trim();
+const codeInput = document.getElementById("code");
+const out = document.getElementById("verifyOut");
 
-const q = query(collection(db,"visitorCodes"),where("code","==",code));
-const snap = await getDocs(q);
+const code = (codeInput.value || "").trim();
 
-if(snap.empty){
-document.getElementById("verifyOut").innerHTML =
-"<span class='error'>INVALID CODE</span>";
+if (!code) {
+out.innerHTML = "<span class='error'>ENTER ACCESS CODE</span>";
 return;
 }
 
-const d = snap.docs[0].data();
+try {
 
-document.getElementById("verifyOut").innerHTML = `
-<span class='success'>ACCESS GRANTED ✔</span><br>
-Resident: ${d.resident}<br>
-House: ${d.houseNumber}
+/* 🔥 SAFE QUERY (string-safe + reliable) */
+const q = query(collection(db, "visitorCodes"));
+const snap = await getDocs(q);
+
+if (snap.empty) {
+out.innerHTML = "<span class='error'>NO CODES IN DATABASE</span>";
+return;
+}
+
+let found = null;
+
+/* 🔍 MANUAL MATCH (100% RELIABLE) */
+snap.forEach(docSnap => {
+
+const data = docSnap.data();
+
+/* normalize both sides */
+if (String(data.code).trim() === code) {
+found = data;
+}
+
+});
+
+/* ❌ NOT FOUND */
+if (!found) {
+out.innerHTML = "<span class='error'>INVALID CODE ❌</span>";
+return;
+}
+
+/* ⛔ EXPIRY CHECK */
+if (found.expiry && Date.now() > found.expiry) {
+out.innerHTML = "<span class='error'>CODE EXPIRED ❌</span>";
+return;
+}
+
+/* ✅ SUCCESS */
+out.innerHTML = `
+<span class="success">ACCESS GRANTED ✔</span><br><br>
+
+Resident: <b>${found.resident || "-"}</b><br>
+Visitor: <b>${found.visitor || "-"}</b><br>
+House: <b>${found.houseNumber || "-"}</b>
 `;
 
-};
+} catch (err) {
 
+console.error("VERIFY ERROR:", err);
+
+out.innerHTML = `
+<span class="error">
+VERIFY FAILED (Firebase Error)
+</span>
+`;
+
+}
+
+};
 </script>
 
 </body>
