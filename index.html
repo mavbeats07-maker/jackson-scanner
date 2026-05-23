@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JST Security System</title>
+<title>JST Security System FIXED</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
@@ -98,7 +98,7 @@ border-radius:10px;
 
 <div class="container">
 
-<h2>🚗 JST Security System</h2>
+<h2>🚗 JST Security System (FULL FIX)</h2>
 
 <!-- PANIC -->
 <div class="card" id="panicPanel">
@@ -111,7 +111,9 @@ border-radius:10px;
 <!-- CAMERA -->
 <div class="card">
 <video id="video" autoplay playsinline muted></video>
+
 <button onclick="scanDisc()">SCAN DISC</button>
+
 <p id="status">Starting camera...</p>
 
 <div class="result" id="output">
@@ -124,7 +126,7 @@ VIN: -
 <div class="card">
 <h3>🔐 Security Panel</h3>
 <input id="code" placeholder="Enter Access Code"/>
-<button onclick="verify()">VERIFY</button>
+<button onclick="verifyAccess()">VERIFY</button>
 <p id="verifyOut"></p>
 </div>
 
@@ -216,10 +218,11 @@ navigator.vibrate?.([500,200,500,200,1000]);
 });
 });
 
-/* STOP ALARM */
+/* STOP ALARM BUTTON */
 window.stopAlarm = function(){
 siren.pause();
 siren.currentTime=0;
+
 document.body.classList.remove("alertMode");
 document.getElementById("panicPanel").style.display="none";
 document.getElementById("panicText").innerHTML="";
@@ -227,18 +230,18 @@ document.getElementById("panicMap").src="";
 activePanicId=null;
 };
 
-/* BARCODE SCAN */
-const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+/* SCAN BUTTON (WORKING) */
+const reader = new ZXingBrowser.BrowserMultiFormatReader();
 
 window.scanDisc = async function(){
 
-const status=document.getElementById("status");
+const status = document.getElementById("status");
 
-status.innerHTML="Scanning disc...";
+status.innerHTML = "Scanning disc...";
 
 try{
 
-const result = await codeReader.decodeOnceFromVideoDevice(null,video);
+const result = await reader.decodeOnceFromVideoDevice(null,video);
 
 vehicleData.rawBarcode = result.text;
 
@@ -247,37 +250,47 @@ Plate: <b>${result.text}</b><br>
 VIN: -
 `;
 
-status.innerHTML="<span class='success'>Disc scanned ✔</span>";
-
-scanStep=2;
+status.innerHTML="<span class='success'>SCAN SUCCESS ✔</span>";
 
 }catch(e){
-status.innerHTML="<span class='error'>Barcode not detected</span>";
+console.log(e);
+status.innerHTML="<span class='error'>Scan failed</span>";
 }
 
 };
 
-/* VERIFY */
-window.verify = async function(){
+/* VERIFY BUTTON (FIXED) */
+window.verifyAccess = async function(){
 
-const code=document.getElementById("code").value.trim();
-const out=document.getElementById("verifyOut");
+const code = document.getElementById("code").value.trim();
+const out = document.getElementById("verifyOut");
 
-const q=query(collection(db,"visitorCodes"),where("code","==",code));
-const snap=await getDocs(q);
+if(!code){
+out.innerHTML="<span class='error'>ENTER CODE</span>";
+return;
+}
+
+try{
+
+const q = query(collection(db,"visitorCodes"),where("code","==",code));
+const snap = await getDocs(q);
 
 if(snap.empty){
 out.innerHTML="<span class='error'>INVALID CODE</span>";
 return;
 }
 
-const d=snap.docs[0].data();
+const d = snap.docs[0].data();
 
 out.innerHTML=`
 <span class='success'>ACCESS GRANTED ✔</span><br>
 Resident: ${d.resident}<br>
 House: ${d.houseNumber}
 `;
+
+}catch(err){
+out.innerHTML="<span class='error'>VERIFY ERROR</span>";
+}
 
 };
 
