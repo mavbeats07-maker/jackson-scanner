@@ -367,10 +367,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* =========================
+LIVE PANIC ALERT LISTENER
+========================= */
+
 const panicAudio =
 document.getElementById("panicSiren");
-
-panicAudio.volume = 1;
 
 let lastPanicTime = 0;
 
@@ -392,104 +393,14 @@ snapshot.forEach(async(doc)=>{
 
 const data = doc.data();
 
+/* IGNORE OLD ALERTS */
+
 if(data.time <= lastPanicTime){
 return;
 }
 
 lastPanicTime = data.time;
 
-/* FORCE LOUD SIREN */
-
-try{
-
-panicAudio.pause();
-
-panicAudio.currentTime = 0;
-
-await panicAudio.play();
-
-}catch(err){
-
-console.log(err);
-
-}
-
-/* FLASH RED */
-
-document.body.classList.add("alertMode");
-
-/* SHOW PANEL */
-
-document.getElementById("panicPanel").style.display =
-"block";
-
-/* ALERT INFO */
-
-document.getElementById("panicText").innerHTML =
-
-`
-
-<b style="font-size:32px;color:red;">
-🚨 POLICE PANIC ALERT ACTIVE
-</b>
-
-<br><br>
-
-Latitude:
-<b>${data.latitude}</b>
-
-<br><br>
-
-Longitude:
-<b>${data.longitude}</b>
-
-<br><br>
-
-Accuracy:
-<b>${Math.round(data.accuracy)} meters</b>
-
-<br><br>
-
-Time:
-<b>${new Date(data.time).toLocaleString()}</b>
-
-`;
-
-/* MAP */
-
-document.getElementById("panicMap").src =
-
-"https://maps.google.com/maps?q="
-+
-data.latitude
-+
-","
-+
-data.longitude
-+
-"&z=18&output=embed";
-
-/* VIBRATION */
-
-if(navigator.vibrate){
-
-navigator.vibrate([500,300,500,300,1000]);
-
-}
-
-/* FULLSCREEN */
-
-if(document.documentElement.requestFullscreen){
-
-document.documentElement.requestFullscreen();
-
-}
-
-});
-
-}
-
-);
 /* =========================
 PLAY POLICE SIREN
 ========================= */
