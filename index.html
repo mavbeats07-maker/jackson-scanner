@@ -365,6 +365,65 @@ projectId: "jackson-smart-technologi-1db26"
 const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app);
+  /* =========================
+CAMERA START (FIXED)
+========================= */
+
+const video = document.getElementById("video");
+
+async function startCamera() {
+try {
+
+let stream;
+
+/* 1st TRY: BACK CAMERA */
+try {
+stream = await navigator.mediaDevices.getUserMedia({
+video: {
+facingMode: { exact: "environment" }
+},
+audio: false
+});
+} catch (err1) {
+
+/* 2nd TRY: IDEAL BACK CAMERA */
+try {
+stream = await navigator.mediaDevices.getUserMedia({
+video: {
+facingMode: { ideal: "environment" }
+},
+audio: false
+});
+} catch (err2) {
+
+/* 3rd FALLBACK: ANY CAMERA */
+stream = await navigator.mediaDevices.getUserMedia({
+video: true,
+audio: false
+});
+
+}
+
+}
+
+video.srcObject = stream;
+await video.play();
+
+document.getElementById("status").innerText =
+"Camera active ✔ Ready to scan";
+
+} catch (err) {
+
+console.log("Camera error:", err);
+
+document.getElementById("status").innerHTML =
+"<span class='error'>Camera blocked ❌ Allow permission</span>";
+
+}
+}
+
+/* AUTO START CAMERA */
+startCamera();
 
 /* =========================
 LIVE PANIC ALERT LISTENER
