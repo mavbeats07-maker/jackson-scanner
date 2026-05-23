@@ -1,96 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JST Security System FIXED</title>
+<title>JST FIXED SYSTEM</title>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
-body{
-margin:0;
-font-family:Segoe UI;
-background:linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.9)),
-url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
-background-size:cover;
-color:white;
-}
-
-.container{padding:15px;max-width:900px;margin:auto;}
-
-.card{
-background:rgba(255,255,255,0.1);
-padding:15px;
-border-radius:12px;
-margin-bottom:15px;
-backdrop-filter:blur(10px);
-}
-
-video{
-width:100%;
-border-radius:10px;
-background:black;
-}
-
-button{
-width:100%;
-padding:12px;
-border:none;
-border-radius:8px;
-background:#0a2a43;
-color:white;
-font-weight:bold;
-cursor:pointer;
-margin-top:10px;
-}
-
-button:hover{background:#06304d;}
-
-input{
-width:100%;
-padding:10px;
-border-radius:8px;
-border:none;
-margin-top:10px;
-}
-
-.result{
-margin-top:10px;
-padding:10px;
-background:rgba(0,0,0,0.4);
-border-radius:8px;
-}
-
-.error{color:#ff4d4d;}
-.success{color:#00ff88;}
-
-#panicPanel{
-display:none;
-border:2px solid red;
-padding:10px;
-}
-
-.alertMode{
-animation:flash 0.6s infinite;
-}
-
-@keyframes flash{
-0%{background:#1b0000;}
-50%{background:#8b0000;}
-100%{background:#1b0000;}
-}
-
-iframe{
-width:100%;
-height:250px;
-border:none;
-margin-top:10px;
-border-radius:10px;
-}
-
-.stopBtn{background:#b30000;}
+body{margin:0;font-family:Segoe UI;background:#111;color:white}
+.container{padding:15px;max-width:900px;margin:auto}
+.card{background:#222;padding:15px;margin-bottom:15px;border-radius:10px}
+video{width:100%;border-radius:10px}
+button{width:100%;padding:12px;margin-top:10px;background:#0a2a43;color:white;border:none}
+input{width:100%;padding:10px;margin-top:10px}
+#panicPanel{display:none;background:#300;border:2px solid red;padding:10px}
+.alert{animation:flash 0.6s infinite}
+@keyframes flash{0%{background:#300}50%{background:#800}100%{background:#300}}
 </style>
 </head>
 
@@ -98,35 +25,26 @@ border-radius:10px;
 
 <div class="container">
 
-<h2>🚗 JST Security System (FULL FIX)</h2>
+<h2>🚗 JST SYSTEM (STABLE FIX)</h2>
 
-<!-- PANIC -->
 <div class="card" id="panicPanel">
-<h2 style="color:red;">🚨 LIVE PANIC ALERT</h2>
+<h3>🚨 PANIC ALERT</h3>
 <p id="panicText"></p>
-<iframe id="panicMap"></iframe>
-<button class="stopBtn" onclick="stopAlarm()">STOP ALARM</button>
+<iframe id="map" style="width:100%;height:200px;border:0"></iframe>
+<button onclick="stopAlarm()">STOP ALARM</button>
 </div>
 
-<!-- CAMERA -->
 <div class="card">
-<video id="video" autoplay playsinline muted></video>
-
+<video id="video" autoplay playsinline></video>
 <button onclick="scanDisc()">SCAN DISC</button>
-
-<p id="status">Starting camera...</p>
-
-<div class="result" id="output">
-Plate: -<br>
-VIN: -
-</div>
+<p id="status">Loading camera...</p>
+<div id="output">Ready</div>
 </div>
 
-<!-- SECURITY -->
 <div class="card">
-<h3>🔐 Security Panel</h3>
-<input id="code" placeholder="Enter Access Code"/>
-<button onclick="verifyAccess()">VERIFY</button>
+<h3>VERIFY</h3>
+<input id="code"/>
+<button onclick="verify()">VERIFY</button>
 <p id="verifyOut"></p>
 </div>
 
@@ -148,7 +66,6 @@ query,
 where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* FIREBASE */
 const firebaseConfig = {
 apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
 authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
@@ -158,15 +75,11 @@ projectId: "jackson-smart-technologi-1db26"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* STATE */
-let scanStep = 1;
-let vehicleData = {};
-let activePanicId = null;
+let video = document.getElementById("video");
+let siren = document.getElementById("siren");
+let lastPanic = null;
 
-const video = document.getElementById("video");
-const siren = document.getElementById("siren");
-
-/* CAMERA */
+/* CAMERA (MUST LOAD FIRST) */
 async function startCamera(){
 try{
 const stream = await navigator.mediaDevices.getUserMedia({
@@ -174,123 +87,92 @@ video:{facingMode:"environment"}
 });
 video.srcObject = stream;
 await video.play();
-document.getElementById("status").innerText = "Camera ready ✔";
+document.getElementById("status").innerText="Camera ready ✔";
 }catch(e){
-document.getElementById("status").innerHTML =
-"<span class='error'>Camera blocked</span>";
+document.getElementById("status").innerText="Camera blocked ❌";
 }
 }
 startCamera();
 
-/* PANIC REALTIME */
-onSnapshot(collection(db,"panicAlerts"),(snap)=>{
+/* PANIC REAL TIME */
+onSnapshot(collection(db,"panicAlerts"),snap=>{
 
-snap.docChanges().forEach(change=>{
+snap.docChanges().forEach(c=>{
 
-if(change.type==="added"){
+if(c.type==="added"){
 
-const d = change.doc.data();
-const id = change.doc.id;
+const d=c.doc.data();
+const id=c.doc.id;
 
-if(id === activePanicId) return;
-activePanicId = id;
+if(id===lastPanic) return;
+lastPanic=id;
 
-/* SHOW PANEL */
 document.getElementById("panicPanel").style.display="block";
-document.getElementById("panicText").innerHTML=`
-🚨 PANIC ALERT<br><br>
-Lat: ${d.latitude}<br>
-Lng: ${d.longitude}<br>
-Time: ${new Date(d.time).toLocaleString()}
-`;
+document.body.classList.add("alert");
 
-document.getElementById("panicMap").src=
+document.getElementById("panicText").innerHTML=
+`Lat:${d.latitude}<br>Lng:${d.longitude}`;
+
+document.getElementById("map").src=
 `https://maps.google.com/maps?q=${d.latitude},${d.longitude}&z=18&output=embed`;
 
-/* SOUND */
 siren.currentTime=0;
 siren.play().catch(()=>{});
-
-document.body.classList.add("alertMode");
-navigator.vibrate?.([500,200,500,200,1000]);
 
 }
 });
 });
 
-/* STOP ALARM BUTTON */
-window.stopAlarm = function(){
+/* STOP BUTTON */
+window.stopAlarm=function(){
 siren.pause();
 siren.currentTime=0;
-
-document.body.classList.remove("alertMode");
 document.getElementById("panicPanel").style.display="none";
-document.getElementById("panicText").innerHTML="";
-document.getElementById("panicMap").src="";
-activePanicId=null;
+document.body.classList.remove("alert");
 };
 
-/* SCAN BUTTON (WORKING) */
+/* CAMERA SCAN */
 const reader = new ZXingBrowser.BrowserMultiFormatReader();
 
 window.scanDisc = async function(){
 
-const status = document.getElementById("status");
+const status=document.getElementById("status");
+const output=document.getElementById("output");
 
-status.innerHTML = "Scanning disc...";
+status.innerText="Scanning...";
 
 try{
 
 const result = await reader.decodeOnceFromVideoDevice(null,video);
 
-vehicleData.rawBarcode = result.text;
+output.innerHTML="BARCODE:<br>"+result.text;
 
-document.getElementById("output").innerHTML=`
-Plate: <b>${result.text}</b><br>
-VIN: -
-`;
-
-status.innerHTML="<span class='success'>SCAN SUCCESS ✔</span>";
+status.innerHTML="✔ Done";
 
 }catch(e){
+status.innerHTML="❌ No barcode detected";
 console.log(e);
-status.innerHTML="<span class='error'>Scan failed</span>";
 }
 
 };
 
-/* VERIFY BUTTON (FIXED) */
-window.verifyAccess = async function(){
+/* VERIFY */
+window.verify = async function(){
 
-const code = document.getElementById("code").value.trim();
-const out = document.getElementById("verifyOut");
+const code=document.getElementById("code").value;
+const out=document.getElementById("verifyOut");
 
-if(!code){
-out.innerHTML="<span class='error'>ENTER CODE</span>";
-return;
-}
-
-try{
-
-const q = query(collection(db,"visitorCodes"),where("code","==",code));
-const snap = await getDocs(q);
+const q=query(collection(db,"visitorCodes"),where("code","==",code));
+const snap=await getDocs(q);
 
 if(snap.empty){
-out.innerHTML="<span class='error'>INVALID CODE</span>";
+out.innerHTML="INVALID ❌";
 return;
 }
 
-const d = snap.docs[0].data();
+const d=snap.docs[0].data();
 
-out.innerHTML=`
-<span class='success'>ACCESS GRANTED ✔</span><br>
-Resident: ${d.resident}<br>
-House: ${d.houseNumber}
-`;
-
-}catch(err){
-out.innerHTML="<span class='error'>VERIFY ERROR</span>";
-}
+out.innerHTML="ACCESS ✔ "+d.resident;
 
 };
 
