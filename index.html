@@ -377,6 +377,85 @@ panicAudio.volume = 1;
 
 let lastPanicTime = 0;
 
+/* CUSTOM EMERGENCY TONE */
+
+function playEmergencyTone(){
+
+const AudioContext =
+window.AudioContext ||
+window.webkitAudioContext;
+
+const ctx =
+new AudioContext();
+
+/* SIREN WAVES */
+
+const osc1 = ctx.createOscillator();
+const osc2 = ctx.createOscillator();
+
+const gain1 = ctx.createGain();
+const gain2 = ctx.createGain();
+
+osc1.connect(gain1);
+gain1.connect(ctx.destination);
+
+osc2.connect(gain2);
+gain2.connect(ctx.destination);
+
+osc1.type = "sawtooth";
+osc2.type = "square";
+
+gain1.gain.value = 0.4;
+gain2.gain.value = 0.3;
+
+osc1.frequency.setValueAtTime(
+700,
+ctx.currentTime
+);
+
+osc2.frequency.setValueAtTime(
+900,
+ctx.currentTime
+);
+
+/* REAL POLICE EFFECT */
+
+osc1.frequency.linearRampToValueAtTime(
+1200,
+ctx.currentTime + 0.5
+);
+
+osc2.frequency.linearRampToValueAtTime(
+1400,
+ctx.currentTime + 0.5
+);
+
+osc1.frequency.linearRampToValueAtTime(
+700,
+ctx.currentTime + 1
+);
+
+osc2.frequency.linearRampToValueAtTime(
+900,
+ctx.currentTime + 1
+);
+
+osc1.start();
+osc2.start();
+
+/* STOP AFTER 8 SECONDS */
+
+setTimeout(()=>{
+
+osc1.stop();
+osc2.stop();
+
+},8000);
+
+}
+
+/* FIREBASE PANIC LISTENER */
+
 const panicQuery = query(
 
 collection(db,"panicAlerts"),
@@ -395,13 +474,17 @@ snapshot.forEach(async(doc)=>{
 
 const data = doc.data();
 
+/* IGNORE OLD ALERTS */
+
 if(data.time <= lastPanicTime){
 return;
 }
 
 lastPanicTime = data.time;
 
-/* FORCE LOUD SIREN */
+/* =========================
+PLAY ALL ALARMS INSTANTLY
+========================= */
 
 try{
 
@@ -413,27 +496,50 @@ await panicAudio.play();
 
 }catch(err){
 
-console.log(err);
+console.log("Audio autoplay blocked");
 
 }
 
-/* FLASH RED */
+/* CUSTOM TONE BACKUP */
+
+playEmergencyTone();
+
+/* SCREEN FLASH */
 
 document.body.classList.add("alertMode");
 
-/* SHOW PANEL */
+/* FULLSCREEN */
+
+if(document.documentElement.requestFullscreen){
+
+document.documentElement.requestFullscreen();
+
+}
+
+/* VIBRATION */
+
+if(navigator.vibrate){
+
+navigator.vibrate([500,200,500,200,1000]);
+
+}
+
+/* SHOW ALERT PANEL */
 
 document.getElementById("panicPanel").style.display =
 "block";
 
-/* ALERT INFO */
+/* SHOW DATA */
 
 document.getElementById("panicText").innerHTML =
 
 `
 
-<b style="font-size:32px;color:red;">
-🚨 POLICE PANIC ALERT ACTIVE
+<b style="
+font-size:34px;
+color:red;
+">
+🚨 POLICE EMERGENCY ALERT
 </b>
 
 <br><br>
@@ -449,7 +555,7 @@ Longitude:
 <br><br>
 
 Accuracy:
-<b>${Math.round(data.accuracy)} meters</b>
+<b>${Math.round(data.accuracy)}m</b>
 
 <br><br>
 
@@ -472,27 +578,12 @@ data.longitude
 +
 "&z=18&output=embed";
 
-/* VIBRATION */
-
-if(navigator.vibrate){
-
-navigator.vibrate([500,300,500,300,1000]);
-
-}
-
-/* FULLSCREEN */
-
-if(document.documentElement.requestFullscreen){
-
-document.documentElement.requestFullscreen();
-
-}
-
 });
 
 }
 
 );
+
 
 /* =========================
 STOP ALARM
