@@ -233,11 +233,16 @@ document.getElementById("panicMap").src =
 });
 
 /* STOP */
-window.stopAlarm = function(){
-panicAudio.pause();
+if (!panicMuted) {
+
 panicAudio.currentTime = 0;
-document.body.classList.remove("alertMode");
-};
+panicAudio.play().catch(()=>{});
+
+document.body.classList.add("alertMode");
+
+navigator.vibrate?.([500,200,500,200,1000]);
+
+}
 
 /* ================= SCAN ================= */
 window.scan = async function(){
