@@ -160,6 +160,10 @@ projectId: "jackson-smart-technologi-1db26"
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+  /* ✅ GLOBAL PANIC STATE (PUT HERE) */
+let activePanicId = null;
+let panicMuted = false;
+
 
 /* ================= CAMERA ================= */
 const video = document.getElementById("video");
@@ -188,62 +192,74 @@ const panicAudio = document.getElementById("panicSiren");
 let lastTime = 0;
 
 /* 🔴 TRUE REAL-TIME LISTENER */
-onSnapshot(collection(db,"panicAlerts"), (snapshot)=>{
+onSnapshot(collection(db, "panicAlerts"), (snapshot) => {
 
-snapshot.docChanges().forEach(change=>{
+snapshot.docChanges().forEach(change => {
 
-if(change.type === "added"){
+if (change.type === "added") {
 
 const d = change.doc.data();
+const id = change.doc.id;
 
-/* ignore duplicates */
-if(d.time <= lastTime) return;
-lastTime = d.time;
+/* 🚨 ONLY TRIGGER IF NEW ALERT */
+if (id === activePanicId) return;
 
-/* 🔊 INSTANT ALARM */
-panicAudio.currentTime = 0;
-panicAudio.play().catch(()=>{});
-document.body.classList.add("alertMode");
+activePanicId = id;
 
-/* vibration */
-navigator.vibrate?.([500,200,500,200,1000]);
+/* RESET MUTED STATE FOR NEW ALERT */
+panicMuted = false;
 
-/* show panel */
+/* SHOW PANEL */
 document.getElementById("panicPanel").style.display = "block";
 
 document.getElementById("panicText").innerHTML = `
 <b style="color:red;font-size:24px;">
-🚨 PANIC ALERT TRIGGERED
+🚨 PANIC ALERT ACTIVE
 </b><br><br>
 
 Latitude: ${d.latitude}<br>
 Longitude: ${d.longitude}<br>
-Accuracy: ${Math.round(d.accuracy || 0)}m<br>
 Time: ${new Date(d.time).toLocaleString()}
 `;
 
-/* map */
+/* MAP */
 document.getElementById("panicMap").src =
 `https://maps.google.com/maps?q=${d.latitude},${d.longitude}&z=18&output=embed`;
 
-}
-
-});
-
-});
-
-/* STOP */
+/* 🔊 PLAY ONLY IF NOT MUTED */
 if (!panicMuted) {
-
 panicAudio.currentTime = 0;
 panicAudio.play().catch(()=>{});
-
 document.body.classList.add("alertMode");
-
 navigator.vibrate?.([500,200,500,200,1000]);
+}
 
 }
 
+});
+
+});
+/* STOP */
+window.stopAlarm = function () {
+
+panicMuted = true;
+activePanicId = null;
+
+/* STOP SOUND */
+panicAudio.pause();
+panicAudio.currentTime = 0;
+
+/* REMOVE VISUAL ALERT */
+document.body.classList.remove("alertMode");
+
+/* 🚨 CLOSE PANEL COMPLETELY */
+document.getElementById("panicPanel").style.display = "none";
+
+/* CLEAR TEXT + MAP */
+document.getElementById("panicText").innerHTML = "";
+document.getElementById("panicMap").src = "";
+
+};
 /* ================= SCAN ================= */
 window.scan = async function(){
 
