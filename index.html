@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>JST Security System</title>
 
@@ -12,7 +12,7 @@
 body{
 margin:0;
 font-family:Segoe UI;
-background:linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.9)),
+background:linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.9)),
 url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
 background-size:cover;
 color:white;
@@ -51,9 +51,9 @@ button:hover{background:#06304d;}
 input{
 width:100%;
 padding:10px;
-margin-top:10px;
 border-radius:8px;
 border:none;
+margin-top:10px;
 }
 
 .result{
@@ -63,8 +63,8 @@ background:rgba(0,0,0,0.4);
 border-radius:8px;
 }
 
-.success{color:#00ff88;}
 .error{color:#ff4d4d;}
+.success{color:#00ff88;}
 
 #panicPanel{
 display:none;
@@ -82,7 +82,6 @@ animation:flash 0.6s infinite;
 100%{background:#1b0000;}
 }
 
-.stopBtn{background:#b30000;}
 iframe{
 width:100%;
 height:250px;
@@ -90,6 +89,8 @@ border:none;
 margin-top:10px;
 border-radius:10px;
 }
+
+.stopBtn{background:#b30000;}
 </style>
 </head>
 
@@ -110,12 +111,12 @@ border-radius:10px;
 <!-- CAMERA -->
 <div class="card">
 <video id="video" autoplay playsinline muted></video>
-<button onclick="scanBarcode()">SCAN DISC</button>
+<button onclick="scanDisc()">SCAN DISC</button>
 <p id="status">Starting camera...</p>
 
 <div class="result" id="output">
-Plate: <span>-</span><br>
-VIN: <span>-</span>
+Plate: -<br>
+VIN: -
 </div>
 </div>
 
@@ -155,7 +156,7 @@ projectId: "jackson-smart-technologi-1db26"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* GLOBALS */
+/* STATE */
 let scanStep = 1;
 let vehicleData = {};
 let activePanicId = null;
@@ -179,8 +180,8 @@ document.getElementById("status").innerHTML =
 }
 startCamera();
 
-/* PANIC REAL-TIME */
-onSnapshot(collection(db,"panicAlerts"), (snap)=>{
+/* PANIC REALTIME */
+onSnapshot(collection(db,"panicAlerts"),(snap)=>{
 
 snap.docChanges().forEach(change=>{
 
@@ -192,85 +193,85 @@ const id = change.doc.id;
 if(id === activePanicId) return;
 activePanicId = id;
 
-/* SHOW */
+/* SHOW PANEL */
 document.getElementById("panicPanel").style.display="block";
-document.getElementById("panicText").innerHTML=
-`🚨 PANIC ALERT<br><br>
+document.getElementById("panicText").innerHTML=`
+🚨 PANIC ALERT<br><br>
 Lat: ${d.latitude}<br>
 Lng: ${d.longitude}<br>
-Time: ${new Date(d.time).toLocaleString()}`;
+Time: ${new Date(d.time).toLocaleString()}
+`;
 
 document.getElementById("panicMap").src=
 `https://maps.google.com/maps?q=${d.latitude},${d.longitude}&z=18&output=embed`;
 
 /* SOUND */
-siren.currentTime = 0;
+siren.currentTime=0;
 siren.play().catch(()=>{});
 
 document.body.classList.add("alertMode");
-
 navigator.vibrate?.([500,200,500,200,1000]);
 
 }
 });
 });
 
-/* STOP */
+/* STOP ALARM */
 window.stopAlarm = function(){
 siren.pause();
-siren.currentTime = 0;
-
+siren.currentTime=0;
 document.body.classList.remove("alertMode");
 document.getElementById("panicPanel").style.display="none";
 document.getElementById("panicText").innerHTML="";
 document.getElementById("panicMap").src="";
-activePanicId = null;
+activePanicId=null;
 };
 
-/* BARCODE SCAN (STEP 1 ONLY) */
+/* BARCODE SCAN */
 const codeReader = new ZXingBrowser.BrowserMultiFormatReader();
 
-window.scanBarcode = async function(){
+window.scanDisc = async function(){
 
-const status = document.getElementById("status");
+const status=document.getElementById("status");
 
-status.innerHTML = "Scanning barcode...";
+status.innerHTML="Scanning disc...";
 
 try{
 
-const result = await codeReader.decodeOnceFromVideoDevice(null, video);
+const result = await codeReader.decodeOnceFromVideoDevice(null,video);
 
-const text = result.text;
+vehicleData.rawBarcode = result.text;
 
-vehicleData.rawBarcode = text;
+document.getElementById("output").innerHTML=`
+Plate: <b>${result.text}</b><br>
+VIN: -
+`;
 
-document.getElementById("output").innerHTML=
-`Barcode: <b>${text}</b><br>VIN: -`;
+status.innerHTML="<span class='success'>Disc scanned ✔</span>";
 
-status.innerHTML = "<span class='success'>Step 1 complete ✔</span>";
-
-scanStep = 2;
+scanStep=2;
 
 }catch(e){
 status.innerHTML="<span class='error'>Barcode not detected</span>";
 }
+
 };
 
 /* VERIFY */
 window.verify = async function(){
 
-const code = document.getElementById("code").value.trim();
-const out = document.getElementById("verifyOut");
+const code=document.getElementById("code").value.trim();
+const out=document.getElementById("verifyOut");
 
-const q = query(collection(db,"visitorCodes"),where("code","==",code));
-const snap = await getDocs(q);
+const q=query(collection(db,"visitorCodes"),where("code","==",code));
+const snap=await getDocs(q);
 
 if(snap.empty){
 out.innerHTML="<span class='error'>INVALID CODE</span>";
 return;
 }
 
-const d = snap.docs[0].data();
+const d=snap.docs[0].data();
 
 out.innerHTML=`
 <span class='success'>ACCESS GRANTED ✔</span><br>
