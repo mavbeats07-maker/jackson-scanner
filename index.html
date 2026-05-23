@@ -3,9 +3,9 @@
 <head>
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Jackson smart technologies Security Control System</title>
+<title>JST Security Control System</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
@@ -21,33 +21,28 @@ box-sizing:border-box;
 body{
 font-family:Segoe UI;
 background:
-linear-gradient(rgba(0,0,0,0.82),rgba(0,0,0,0.90)),
+linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
 url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
 
 background-size:cover;
 background-position:center;
 min-height:100vh;
 color:white;
-overflow-x:hidden;
 }
 
 .container{
 padding:15px;
-max-width:1000px;
+max-width:950px;
 margin:auto;
 }
 
 .card{
-background:rgba(255,255,255,0.10);
+background:rgba(255,255,255,0.12);
 padding:15px;
 border-radius:15px;
 margin-bottom:15px;
 backdrop-filter:blur(10px);
 border:1px solid rgba(255,255,255,0.12);
-}
-
-h2,h3{
-margin-bottom:10px;
 }
 
 .videoWrap{
@@ -60,15 +55,11 @@ border-radius:15px;
 background:black;
 }
 
-/* =========================
-SCAN BOX
-========================= */
-
 .scanBox{
 position:absolute;
 border:3px solid #00ff88;
+box-shadow:0 0 20px #00ff88;
 border-radius:12px;
-box-shadow:0 0 25px #00ff88;
 pointer-events:none;
 transition:0.3s;
 }
@@ -78,8 +69,9 @@ position:absolute;
 height:3px;
 background:#00ff88;
 box-shadow:0 0 15px #00ff88;
-pointer-events:none;
 animation:scanMove 2s linear infinite;
+pointer-events:none;
+transition:0.3s;
 }
 
 @keyframes scanMove{
@@ -89,7 +81,7 @@ transform:translateY(0px);
 }
 
 50%{
-transform:translateY(140px);
+transform:translateY(180px);
 }
 
 100%{
@@ -115,10 +107,6 @@ button:hover{
 background:#06304d;
 }
 
-.stopBtn{
-background:#b30000;
-}
-
 input{
 width:100%;
 padding:12px;
@@ -134,7 +122,6 @@ background:rgba(0,0,0,0.45);
 padding:12px;
 border-radius:10px;
 line-height:1.8;
-word-break:break-word;
 }
 
 .result span{
@@ -158,9 +145,7 @@ font-weight:bold;
 margin-bottom:10px;
 }
 
-/* =========================
-PANIC ALERT
-========================= */
+/* PANIC */
 
 .alertMode{
 animation:flashRed 0.7s infinite;
@@ -169,22 +154,22 @@ animation:flashRed 0.7s infinite;
 @keyframes flashRed{
 
 0%{
-background:#1b0000;
+background-color:#1b0000;
 }
 
 50%{
-background:#8b0000;
+background-color:#8b0000;
 }
 
 100%{
-background:#1b0000;
+background-color:#1b0000;
 }
 
 }
 
 #panicPanel{
 display:none;
-border:3px solid red;
+border:2px solid red;
 }
 
 #panicPanel iframe{
@@ -195,10 +180,9 @@ border-radius:12px;
 margin-top:15px;
 }
 
-.bigAlert{
-font-size:34px;
-font-weight:bold;
-color:red;
+.stopBtn{
+background:#b30000;
+font-size:18px;
 }
 
 </style>
@@ -213,17 +197,13 @@ color:red;
 🚗 JST Security Control System
 </h2>
 
-<!-- =========================
-PANIC PANEL
-========================= -->
+<!-- PANIC PANEL -->
 
 <div class="card" id="panicPanel">
 
-<div class="bigAlert">
+<h2 style="color:red;">
 🚨 LIVE PANIC ALERT
-</div>
-
-<br>
+</h2>
 
 <p id="panicText"></p>
 
@@ -231,16 +211,13 @@ PANIC PANEL
 
 <button
 class="stopBtn"
-onclick="stopAlarm()"
->
+onclick="stopAlarm()">
 STOP ALARM
 </button>
 
 </div>
 
-<!-- =========================
-SCANNER
-========================= -->
+<!-- SCANNER -->
 
 <div class="card">
 
@@ -257,9 +234,15 @@ playsinline
 muted>
 </video>
 
-<div class="scanBox" id="scanBox"></div>
+<div
+class="scanBox"
+id="scanBox">
+</div>
 
-<div class="scanLine" id="scanLine"></div>
+<div
+class="scanLine"
+id="scanLine">
+</div>
 
 </div>
 
@@ -276,7 +259,7 @@ Starting camera...
 Plate :
 <span>-</span><br>
 
-Make :
+Car Make :
 <span>-</span><br>
 
 VIN :
@@ -295,9 +278,7 @@ ID Number :
 
 </div>
 
-<!-- =========================
-SECURITY PANEL
-========================= -->
+<!-- SECURITY -->
 
 <div class="card">
 
@@ -307,8 +288,7 @@ SECURITY PANEL
 
 <input
 id="code"
-placeholder="Enter Access Code"
-/>
+placeholder="Enter Access Code">
 
 <button onclick="verify()">
 VERIFY ACCESS
@@ -320,15 +300,12 @@ VERIFY ACCESS
 
 </div>
 
-<!-- =========================
-SIREN
-========================= -->
+<!-- SIREN -->
 
 <audio
 id="panicSiren"
 loop
-preload="auto"
->
+preload="auto">
 
 <source
 src="https://actions.google.com/sounds/v1/emergency/police_siren.ogg"
@@ -339,23 +316,25 @@ type="audio/ogg">
 <script type="module">
 
 import { initializeApp }
-
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 
 import {
 
 getFirestore,
 collection,
+query,
+where,
+getDocs,
 onSnapshot,
-getDocs
+orderBy,
+limit,
+addDoc
 
 }
 
 from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/* =========================
-FIREBASE
-========================= */
+/* FIREBASE */
 
 const firebaseConfig = {
 
@@ -367,15 +346,11 @@ projectId: "jackson-smart-technologi-1db26"
 
 };
 
-const app =
-initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
-const db =
-getFirestore(app);
+const db = getFirestore(app);
 
-/* =========================
-ELEMENTS
-========================= */
+/* GLOBALS */
 
 const video =
 document.getElementById("video");
@@ -386,12 +361,17 @@ document.getElementById("status");
 const output =
 document.getElementById("output");
 
+const stepText =
+document.getElementById("stepText");
+
 const panicAudio =
 document.getElementById("panicSiren");
 
-/* =========================
-GLOBAL STATE
-========================= */
+const scanBox =
+document.getElementById("scanBox");
+
+const scanLine =
+document.getElementById("scanLine");
 
 let scanStep = 1;
 
@@ -399,11 +379,9 @@ let vehicleData = {};
 
 let activePanicId = null;
 
-let panicMuted = false;
+let scanner = null;
 
-/* =========================
-CAMERA
-========================= */
+/* CAMERA */
 
 async function startCamera(){
 
@@ -415,7 +393,9 @@ await navigator.mediaDevices.getUserMedia({
 video:{
 facingMode:{
 ideal:"environment"
-}
+},
+width:{ideal:1920},
+height:{ideal:1080}
 },
 
 audio:false
@@ -429,12 +409,14 @@ await video.play();
 statusText.innerHTML =
 "<span class='success'>Camera Ready ✔</span>";
 
+setDiscScanBox();
+
 }catch(err){
 
 console.log(err);
 
 statusText.innerHTML =
-"<span class='error'>Camera Blocked ❌</span>";
+"<span class='error'>Camera Failed ❌</span>";
 
 }
 
@@ -442,98 +424,115 @@ statusText.innerHTML =
 
 startCamera();
 
-/* =========================
-SCAN BOX
-========================= */
+/* SCAN BOXES */
 
-function setScanBox(top,left,width,height){
+function setDiscScanBox(){
 
-const box =
-document.getElementById("scanBox");
+scanBox.style.top = "22%";
+scanBox.style.left = "15%";
+scanBox.style.width = "70%";
+scanBox.style.height = "28%";
 
-const line =
-document.getElementById("scanLine");
-
-box.style.top = top + "%";
-box.style.left = left + "%";
-box.style.width = width + "%";
-box.style.height = height + "%";
-
-line.style.top = (top + 5) + "%";
-line.style.left = left + "%";
-line.style.width = width + "%";
+scanLine.style.top = "25%";
+scanLine.style.left = "15%";
+scanLine.style.width = "70%";
 
 }
 
-setScanBox(35,15,70,20);
+function setIDScanBox(){
 
-/* =========================
-PANIC SYSTEM
-========================= */
+scanBox.style.top = "15%";
+scanBox.style.left = "10%";
+scanBox.style.width = "80%";
+scanBox.style.height = "50%";
 
-onSnapshot(
+scanLine.style.top = "18%";
+scanLine.style.left = "10%";
+scanLine.style.width = "80%";
+
+}
+
+/* PANIC ALERTS */
+
+const panicQuery = query(
 
 collection(db,"panicAlerts"),
+orderBy("time","desc"),
+limit(1)
 
-(snapshot)=>{
+);
 
-snapshot.docChanges().forEach(async(change)=>{
+onSnapshot(panicQuery,(snapshot)=>{
 
-if(change.type !== "added"){
+snapshot.forEach(async(doc)=>{
+
+if(activePanicId === doc.id){
 return;
 }
 
-const id =
-change.doc.id;
+activePanicId = doc.id;
 
-const d =
-change.doc.data();
+const data = doc.data();
 
-if(id === activePanicId){
-return;
-}
+/* SHOW */
 
-activePanicId = id;
+document.getElementById("panicPanel")
+.style.display = "block";
 
-panicMuted = false;
+/* TEXT */
 
-document.getElementById("panicPanel").style.display =
-"block";
+document.getElementById("panicText")
+.innerHTML = `
 
-document.getElementById("panicText").innerHTML =
+<b style="font-size:28px;color:red;">
+🚨 PANIC ALERT ACTIVE
+</b>
 
-`
+<br><br>
+
+Resident:
+<b>${data.resident || "Unknown"}</b>
+
+<br><br>
 
 Latitude:
-<b>${d.latitude || "-"}</b>
+<b>${data.latitude}</b>
 
 <br><br>
 
 Longitude:
-<b>${d.longitude || "-"}</b>
+<b>${data.longitude}</b>
 
 <br><br>
 
 Accuracy:
-<b>${Math.round(d.accuracy || 0)}m</b>
+<b>${Math.round(data.accuracy || 0)}m</b>
 
 <br><br>
 
 Time:
-<b>${new Date(d.time || Date.now()).toLocaleString()}</b>
+<b>${new Date(data.time).toLocaleString()}</b>
 
 `;
 
+/* MAP */
+
 document.getElementById("panicMap").src =
 
-`https://maps.google.com/maps?q=${d.latitude},${d.longitude}&z=18&output=embed`;
+`https://maps.google.com/maps?q=${data.latitude},${data.longitude}&z=18&output=embed`;
 
-if(!panicMuted){
+/* FLASH */
+
+document.body.classList.add("alertMode");
+
+/* SIREN */
 
 try{
 
 panicAudio.pause();
+
 panicAudio.currentTime = 0;
+
 await panicAudio.play();
 
 }catch(err){
@@ -542,23 +541,17 @@ console.log(err);
 
 }
 
-document.body.classList.add("alertMode");
+/* VIBRATE */
 
 navigator.vibrate?.([500,200,500,200,1000]);
 
-}
+});
 
 });
 
-}
-
-/* STOP ALARM */
+/* STOP */
 
 window.stopAlarm = function(){
-
-panicMuted = true;
-
-activePanicId = null;
 
 panicAudio.pause();
 
@@ -566,150 +559,93 @@ panicAudio.currentTime = 0;
 
 document.body.classList.remove("alertMode");
 
-document.getElementById("panicPanel").style.display =
-"none";
+document.getElementById("panicPanel")
+.style.display = "none";
 
-document.getElementById("panicText").innerHTML = "";
+document.getElementById("panicText")
+.innerHTML = "";
 
-document.getElementById("panicMap").src = "";
-
-};
-
-/* =========================
-VEHICLE PARSER
-========================= */
-
-function extractVehicleData(text){
-
-text = text.toUpperCase();
-
-const data = {
-
-plate:"",
-make:"",
-vin:"",
-engine:"",
-discNumber:""
+document.getElementById("panicMap")
+.src = "";
 
 };
 
-/* NUMBER PLATE */
+/* OCR */
 
-const platePatterns = [
+async function scanOCR(image){
 
-/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/g,
-/\b[A-Z]{1,3}\s?\d{2,6}\s?[A-Z]{0,3}\b/g,
-/\b\d{2,6}[A-Z]{2,3}\b/g
+return await Tesseract.recognize(
+image,
+"eng"
+);
 
-];
+}
 
-for(const pattern of platePatterns){
+/* BARCODE */
 
-const match = text.match(pattern);
+async function scanBarcode(canvas){
 
-if(match){
+try{
 
-data.plate =
-match[0]
-.replace(/\s/g,"")
+if(!scanner){
+
+scanner =
+new ZXingBrowser.BrowserMultiFormatReader();
+
+}
+
+const result =
+await scanner.decodeFromCanvas(canvas);
+
+return result.text || "";
+
+}catch(err){
+
+return "";
+
+}
+
+}
+
+/* CLEAN */
+
+function clean(text){
+
+return text
+.replace(/\n/g," ")
+.replace(/\s+/g," ")
+.toUpperCase()
 .trim();
 
-break;
+}
+
+/* ID */
+
+function getID(text){
+
+const match =
+text.match(/\b\d{13}\b/);
+
+return match ? match[0] : "";
 
 }
 
-}
-
-/* VIN */
-
-const vinMatch =
-text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
-
-if(vinMatch){
-
-data.vin = vinMatch[0];
-
-}
-
-/* ENGINE */
-
-const engineMatch =
-text.match(/\b[A-Z0-9]{6,15}\b/);
-
-if(engineMatch){
-
-data.engine = engineMatch[0];
-
-}
-
-/* DISC NUMBER */
-
-const discMatch =
-text.match(/\b\d{8,12}\b/);
-
-if(discMatch){
-
-data.discNumber = discMatch[0];
-
-}
-
-/* CAR MAKE */
-
-const brands = [
-
-"TOYOTA",
-"VOLKSWAGEN",
-"VW",
-"BMW",
-"MERCEDES",
-"FORD",
-"NISSAN",
-"HYUNDAI",
-"KIA",
-"AUDI",
-"ISUZU",
-"HONDA",
-"CHEVROLET",
-"MITSUBISHI",
-"LEXUS",
-"VOLVO",
-"SUZUKI",
-"RENAULT",
-"MAZDA",
-"HAVAL",
-"MAHINDRA"
-
-];
-
-for(let b of brands){
-
-if(text.includes(b)){
-
-data.make = b;
-break;
-
-}
-
-}
-
-return data;
-
-}
-
-/* =========================
-MAIN SCANNER
-========================= */
+/* MAIN SCAN */
 
 window.scan = async function(){
 
 if(!video.videoWidth){
 
 statusText.innerHTML =
-"<span class='error'>Camera not ready ❌</span>";
+"<span class='error'>Camera Not Ready ❌</span>";
 
 return;
 
 }
+
+statusText.innerHTML = "Scanning...";
+
+/* FRAME */
 
 const canvas =
 document.createElement("canvas");
@@ -731,81 +667,127 @@ canvas.width,
 canvas.height
 );
 
-/* =========================
-STEP 1
-SA DISC PDF417
-========================= */
+/* STEP 1 */
 
 if(scanStep === 1){
 
 statusText.innerHTML =
-"Scanning SA vehicle disc...";
+"Reading SA Disc Barcode...";
 
-setScanBox(35,15,70,20);
+const barcodeText =
+await scanBarcode(canvas);
 
-try{
-
-const hints = new Map();
-
-hints.set(
-
-ZXing.DecodeHintType.POSSIBLE_FORMATS,
-
-[ZXing.BarcodeFormat.PDF_417]
-
-);
-
-const codeReader =
-new ZXingBrowser.BrowserMultiFormatReader(
-hints
-);
-
-const result =
-await codeReader.decodeFromCanvas(canvas);
-
-if(!result || !result.text){
+if(!barcodeText){
 
 statusText.innerHTML =
-"<span class='error'>Disc barcode not detected ❌</span>";
+"<span class='error'>Barcode Not Detected ❌</span>";
 
 return;
 
 }
 
-const rawText =
-result.text;
+const text =
+clean(barcodeText);
 
-/* EXTRACT VEHICLE INFO */
+/* EXTRACT */
 
-vehicleData =
-extractVehicleData(rawText);
+let plate = "";
+let make = "";
+let vin = "";
+let engine = "";
+let discNumber = "";
 
-/* SAVE RAW */
+const plateMatch =
+text.match(/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/);
 
-vehicleData.rawBarcode = rawText;
+if(plateMatch){
+plate = plateMatch[0];
+}
 
-/* OUTPUT */
+const vinMatch =
+text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
 
-output.innerHTML =
+if(vinMatch){
+vin = vinMatch[0];
+}
 
-`
+const discMatch =
+text.match(/\b\d{8,12}\b/);
 
-Plate:
-<span>${vehicleData.plate || "-"}</span><br>
+if(discMatch){
+discNumber = discMatch[0];
+}
 
-Make:
-<span>${vehicleData.make || "-"}</span><br>
+const engineMatch =
+text.match(/\b[A-Z0-9]{6,15}\b/);
 
-VIN:
-<span>${vehicleData.vin || "-"}</span><br>
+if(engineMatch){
+engine = engineMatch[0];
+}
 
-Engine:
-<span>${vehicleData.engine || "-"}</span><br>
+const makes = [
 
-Disc Number:
-<span>${vehicleData.discNumber || "-"}</span><br>
+"TOYOTA",
+"VOLKSWAGEN",
+"VW",
+"BMW",
+"MERCEDES",
+"FORD",
+"NISSAN",
+"AUDI",
+"HYUNDAI",
+"KIA",
+"HONDA",
+"ISUZU",
+"MAZDA",
+"LEXUS"
 
-ID Number:
+];
+
+for(let m of makes){
+
+if(text.includes(m)){
+
+make = m;
+break;
+
+}
+
+}
+
+/* SAVE */
+
+vehicleData = {
+
+plate,
+make,
+vin,
+engine,
+discNumber,
+rawBarcode:text
+
+};
+
+/* SHOW */
+
+output.innerHTML = `
+
+Plate :
+<span>${plate || "-"}</span><br>
+
+Car Make :
+<span>${make || "-"}</span><br>
+
+VIN :
+<span>${vin || "-"}</span><br>
+
+Engine :
+<span>${engine || "-"}</span><br>
+
+Disc Number :
+<span>${discNumber || "-"}</span><br>
+
+ID Number :
 <span>-</span>
 
 `;
@@ -815,57 +797,36 @@ statusText.innerHTML =
 
 scanStep = 2;
 
-document.getElementById("stepText").innerText =
-"STEP 2 : Scan ID / Driver License";
+stepText.innerText =
+"STEP 2 : Scan SA ID / Driver License";
 
-setScanBox(18,10,80,55);
-
-return;
-
-}catch(err){
-
-console.log(err);
-
-statusText.innerHTML =
-"<span class='error'>PDF417 Scan Failed ❌</span>";
+setIDScanBox();
 
 return;
 
 }
 
-}
-
-/* =========================
-STEP 2
-OCR ID
-========================= */
+/* STEP 2 */
 
 if(scanStep === 2){
 
 statusText.innerHTML =
-"Scanning ID Number...";
-
-try{
+"Scanning ID / License...";
 
 const result =
-await Tesseract.recognize(
+await scanOCR(
 
-canvas.toDataURL(
-"image/jpeg",
-1.0
-),
-
-"eng"
+canvas.toDataURL("image/jpeg",1)
 
 );
 
 const text =
 result.data.text || "";
 
-const idMatch =
-text.match(/\d{13}/);
+const idNumber =
+getID(text);
 
-if(!idMatch){
+if(!idNumber){
 
 statusText.innerHTML =
 "<span class='error'>ID Number Not Found ❌</span>";
@@ -874,76 +835,82 @@ return;
 
 }
 
-const idNumber =
-idMatch[0];
+/* SAVE FIREBASE */
 
-/* FINAL OUTPUT */
+await addDoc(
 
-output.innerHTML =
+collection(db,"vehicleAccessLogs"),
 
-`
+{
 
-Plate:
+vehicle:vehicleData,
+
+owner:{
+idNumber:idNumber
+},
+
+time:Date.now()
+
+}
+
+);
+
+/* SHOW */
+
+output.innerHTML = `
+
+Plate :
 <span>${vehicleData.plate || "-"}</span><br>
 
-Make:
+Car Make :
 <span>${vehicleData.make || "-"}</span><br>
 
-VIN:
+VIN :
 <span>${vehicleData.vin || "-"}</span><br>
 
-Engine:
+Engine :
 <span>${vehicleData.engine || "-"}</span><br>
 
-Disc Number:
+Disc Number :
 <span>${vehicleData.discNumber || "-"}</span><br>
 
-ID Number:
+ID Number :
 <span>${idNumber}</span>
 
 `;
 
 statusText.innerHTML =
-"<span class='success'>FULL SCAN COMPLETE ✔</span>";
+"<span class='success'>Full Scan Complete ✔</span>";
 
 scanStep = 1;
 
 vehicleData = {};
 
-document.getElementById("stepText").innerText =
+stepText.innerText =
 "STEP 1 : Scan SA Vehicle Disc Barcode";
 
-setScanBox(35,15,70,20);
-
-}catch(err){
-
-console.log(err);
-
-statusText.innerHTML =
-"<span class='error'>OCR Failed ❌</span>";
-
-}
+setDiscScanBox();
 
 }
 
 };
 
-/* =========================
-VERIFY ACCESS
-========================= */
+/* VERIFY */
 
 window.verify = async function(){
+
+const code =
+document.getElementById("code")
+.value
+.trim();
 
 const out =
 document.getElementById("verifyOut");
 
-const code =
-document.getElementById("code").value.trim();
-
 if(!code){
 
 out.innerHTML =
-"<span class='error'>ENTER ACCESS CODE</span>";
+"<span class='error'>Enter Access Code</span>";
 
 return;
 
@@ -951,27 +918,17 @@ return;
 
 try{
 
-const snap =
-await getDocs(
-collection(db,"visitorCodes")
+const q = query(
+
+collection(db,"visitorCodes"),
+where("code","==",code)
+
 );
 
-let found = null;
+const snap =
+await getDocs(q);
 
-snap.forEach((docSnap)=>{
-
-const d =
-docSnap.data();
-
-if(String(d.code).trim() === code){
-
-found = d;
-
-}
-
-});
-
-if(!found){
+if(snap.empty){
 
 out.innerHTML =
 "<span class='error'>INVALID CODE ❌</span>";
@@ -980,9 +937,10 @@ return;
 
 }
 
-if(found.expiry){
+const d =
+snap.docs[0].data();
 
-if(Date.now() > found.expiry){
+if(d.expiry && Date.now() > d.expiry){
 
 out.innerHTML =
 "<span class='error'>CODE EXPIRED ❌</span>";
@@ -991,11 +949,7 @@ return;
 
 }
 
-}
-
-out.innerHTML =
-
-`
+out.innerHTML = `
 
 <span class='success'>
 ACCESS GRANTED ✔
@@ -1004,17 +958,17 @@ ACCESS GRANTED ✔
 <br><br>
 
 Resident:
-<b>${found.resident || "-"}</b>
+<b>${d.resident || "-"}</b>
 
 <br><br>
 
 Visitor:
-<b>${found.visitor || "-"}</b>
+<b>${d.visitor || "-"}</b>
 
 <br><br>
 
 House:
-<b>${found.houseNumber || "-"}</b>
+<b>${d.houseNumber || "-"}</b>
 
 `;
 
