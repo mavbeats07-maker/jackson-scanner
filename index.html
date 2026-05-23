@@ -2,40 +2,48 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>JST Scanner LIVE</title>
+<title>JST SCANNER</title>
 
 <style>
 body{
-background:black;
-color:white;
+margin:0;
 font-family:Segoe UI;
+background:
+linear-gradient(rgba(0,0,0,0.8),rgba(0,0,0,0.9)),
+url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
+background-size:cover;
+color:white;
 text-align:center;
 }
+
+.card{padding:15px;}
 
 .alert{
 position:fixed;
 top:0;left:0;
-width:100%;
-height:100%;
+width:100%;height:100%;
 background:red;
 display:none;
-color:white;
 font-size:30px;
 padding-top:120px;
-z-index:9999;
 }
-</style>
 
+button{padding:10px;width:100%;}
+</style>
 </head>
 
 <body>
 
-<h2>JST SECURITY SCANNER</h2>
-<p>Waiting for panic alerts...</p>
+<h2>SECURITY SCANNER</h2>
 
-<div class="alert" id="alertBox">
-🚨 PANIC ALERT RECEIVED <br><br>
-<a id="mapLink" target="_blank" style="color:white;">VIEW LOCATION</a>
+<input id="code" placeholder="Enter Code">
+<button onclick="verify()">VERIFY</button>
+<p id="msg"></p>
+
+<div class="alert" id="alert">
+🚨 PANIC ALERT
+<br>
+<a id="map" target="_blank" style="color:white;">VIEW LOCATION</a>
 </div>
 
 <audio id="siren">
@@ -49,24 +57,34 @@ import {
 getFirestore,
 collection,
 query,
+where,
+getDocs,
+onSnapshot,
 orderBy,
-limit,
-onSnapshot
+limit
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-const firebaseConfig = {
-apiKey: "YOUR_KEY",
-authDomain: "YOUR_DOMAIN",
-projectId: "YOUR_PROJECT"
-};
+const app = initializeApp({
+apiKey:"YOUR_KEY",
+authDomain:"YOUR_DOMAIN",
+projectId:"YOUR_PROJECT"
+});
 
-const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const siren = document.getElementById("siren");
+/* VERIFY */
+window.verify = async function(){
+const q=query(collection(db,"visitorCodes"),
+where("code","==",code.value));
+
+const s=await getDocs(q);
+msg.innerHTML=s.empty?"❌ Invalid":"✔ Valid";
+};
 
 /* LIVE PANIC LISTENER */
-const q = query(collection(db,"panicAlerts"),orderBy("time","desc"),limit(1));
+const siren=document.getElementById("siren");
+
+const q=query(collection(db,"panicAlerts"),orderBy("time","desc"),limit(1));
 
 onSnapshot(q,(snap)=>{
 
@@ -76,17 +94,15 @@ if(change.type==="added"){
 
 const d=change.doc.data();
 
-/* PLAY SIREN */
+alert.style.display="block";
+
 siren.loop=true;
 siren.play().catch(()=>{});
 
-/* SHOW ALERT */
-document.getElementById("alertBox").style.display="block";
-
-document.getElementById("mapLink").href=
-`https://maps.google.com/?q=${d.lat},${d.lng}`;
+map.href=`https://maps.google.com/?q=${d.lat},${d.lng}`;
 
 }
+
 });
 
 });
