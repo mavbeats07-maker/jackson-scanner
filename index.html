@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Jackson smart technologies pro scanner</title>
+<title>JST Pro Security System</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
@@ -15,11 +13,9 @@
 
 body{
 font-family:Segoe UI;
-background:
-linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
+background:linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
 url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
 background-size:cover;
-background-position:center;
 min-height:100vh;
 color:white;
 }
@@ -35,11 +31,7 @@ backdrop-filter:blur(10px);
 border:1px solid rgba(255,255,255,0.12);
 }
 
-video{
-width:100%;
-border-radius:15px;
-background:black;
-}
+video{width:100%;border-radius:12px;background:black;}
 
 button{
 width:100%;
@@ -71,8 +63,8 @@ padding:12px;
 border-radius:10px;
 }
 
-.success{color:#00ff88;font-weight:bold;}
-.error{color:#ff4d4d;font-weight:bold;}
+.success{color:#00ff88;}
+.error{color:#ff4d4d;}
 
 .alertMode{animation:flash 0.7s infinite;}
 
@@ -89,7 +81,7 @@ border:2px solid red;
 
 iframe{
 width:100%;
-height:250px;
+height:260px;
 border:none;
 border-radius:10px;
 margin-top:10px;
@@ -97,32 +89,28 @@ margin-top:10px;
 
 .stopBtn{background:#b30000;}
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>🚗 JST Pro Scanner System</h2>
+<h2>🚗 JST Pro Security System</h2>
 
 <!-- PANIC PANEL -->
 <div class="card" id="panicPanel">
+<h2 style="color:red;">🚨 PANIC ALERT</h2>
 
-<h2 style="color:red;">🚨 LIVE PANIC ALERT</h2>
-
-<p id="panicText">Waiting for panic data...</p>
+<p id="panicText">Waiting...</p>
 
 <iframe id="panicMap"></iframe>
 
-<button onclick="stopAlarm()" class="stopBtn">STOP ALARM</button>
-
+<button class="stopBtn" onclick="stopAlarm()">STOP ALARM</button>
 </div>
 
 <!-- SCANNER -->
 <div class="card">
-
-<p id="stepText">STEP 1 : Scan Vehicle Disc</p>
+<p id="stepText">STEP 1: Scan Vehicle Disc</p>
 
 <video id="video" autoplay playsinline muted></video>
 
@@ -135,18 +123,15 @@ Plate : <span>-</span><br>
 VIN : <span>-</span><br>
 ID : <span>-</span>
 </div>
-
 </div>
 
-<!-- SECURITY PANEL (UNCHANGED STRUCTURE) -->
+<!-- SECURITY -->
 <div class="card">
-
 <h3>🔐 Security Panel</h3>
 
 <input id="code" placeholder="Enter Access Code">
 <button onclick="verify()">VERIFY ACCESS</button>
 <p id="verifyOut"></p>
-
 </div>
 
 </div>
@@ -162,10 +147,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import {
 getFirestore,
 collection,
-query,
-orderBy,
-limit,
 getDocs,
+query,
 where
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -179,20 +162,21 @@ projectId: "jackson-smart-technologi-1db26"
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ================= CAMERA FIX (BACK CAMERA) ================= */
+/* ================= CAMERA FIX ================= */
 const video = document.getElementById("video");
 
 async function startCamera(){
 try{
 const stream = await navigator.mediaDevices.getUserMedia({
-video:{ facingMode:{ ideal:"environment" } }
+video:{ facingMode:"environment" }
 });
 
 video.srcObject = stream;
+
 await video.play();
 
 document.getElementById("status").innerText =
-"Camera active ✔ Back camera enabled";
+"Camera ready ✔";
 
 }catch(err){
 document.getElementById("status").innerHTML =
@@ -202,63 +186,65 @@ document.getElementById("status").innerHTML =
 
 startCamera();
 
-/* ================= PANIC SYSTEM ================= */
+/* ================= PANIC SYSTEM (FIXED 100%) ================= */
 const panicAudio = document.getElementById("panicSiren");
 
-/* ================= PANIC CLICK ================= */
 window.activatePanic = async function(){
 
-/* 🔴 INSTANT SIREN */
-try{
+/* 🔊 INSTANT SIREN */
 panicAudio.currentTime = 0;
-await panicAudio.play();
+panicAudio.play().catch(()=>{});
 document.body.classList.add("alertMode");
-navigator.vibrate?.([500,200,500,200,1000]);
-}catch(e){
-console.log("Audio blocked");
-}
 
-/* 🔴 FETCH LIVE DATA */
+/* 🔥 FETCH LIVE DATA */
+document.getElementById("panicPanel").style.display = "block";
+document.getElementById("panicText").innerHTML =
+"<b style='color:yellow'>Fetching panic data...</b>";
+
 try{
 
-const q = query(
-collection(db,"panicAlerts"),
-orderBy("time","desc"),
-limit(1)
-);
-
-const snap = await getDocs(q);
+const snap = await getDocs(collection(db,"panicAlerts"));
 
 if(snap.empty){
-alert("No panic data found");
+document.getElementById("panicText").innerHTML =
+"<span class='error'>NO PANIC DATA FOUND</span>";
 return;
 }
 
-const data = snap.docs[0].data();
+/* FIND LATEST MANUALLY (NO INDEX ISSUES) */
+let latest = null;
 
-/* SHOW PANEL */
-document.getElementById("panicPanel").style.display = "block";
+snap.forEach(doc=>{
+const d = doc.data();
+if(!latest || (d.time > (latest.time || 0))){
+latest = d;
+}
+});
+
+/* SHOW DATA */
+const lat = latest.latitude ?? latest.lat;
+const lng = latest.longitude ?? latest.lng;
 
 document.getElementById("panicText").innerHTML = `
-<b style="color:red;font-size:24px;">🚨 PANIC ACTIVATED</b><br><br>
-
-Latitude: ${data.latitude}<br>
-Longitude: ${data.longitude}<br>
-Accuracy: ${Math.round(data.accuracy)}m<br>
-Time: ${new Date(data.time).toLocaleString()}
+<b style="color:red;font-size:22px;">🚨 LIVE PANIC ALERT</b><br><br>
+Latitude: ${lat || "N/A"}<br>
+Longitude: ${lng || "N/A"}<br>
+Time: ${new Date(latest.time || Date.now()).toLocaleString()}
 `;
 
-/* MAP */
+if(lat && lng){
 document.getElementById("panicMap").src =
-`https://maps.google.com/maps?q=${data.latitude},${data.longitude}&z=18&output=embed`;
+`https://maps.google.com/maps?q=${lat},${lng}&z=18&output=embed`;
+}
 
 }catch(err){
 console.log(err);
+document.getElementById("panicText").innerHTML =
+"<span class='error'>Firebase error loading panic</span>";
 }
 
 };
 
-/* STOP ALARM */
 window.stopAlarm = function(){
 panicAudio.pause();
 panicAudio.currentTime = 0;
@@ -270,17 +256,12 @@ async function scanOCR(img){
 return await Tesseract.recognize(img,"eng");
 }
 
-function clean(t){return (t||"").toUpperCase();}
-
-function getID(text){
-return text.match(/\b\d{13}\b/)?.[0] || "";
-}
-
 /* ================= ZXING ================= */
 async function decodeBarcode(canvas){
 try{
 const reader = new ZXingBrowser.BrowserMultiFormatReader();
-return (await reader.decodeFromCanvas(canvas)).text;
+const res = await reader.decodeFromCanvas(canvas);
+return res?.text || "";
 }catch(e){return "";}
 }
 
@@ -294,9 +275,9 @@ canvas.height = video.videoHeight;
 canvas.getContext("2d").drawImage(video,0,0);
 
 let barcode = await decodeBarcode(canvas);
-let text = barcode || (await scanOCR(canvas.toDataURL())).data.text;
+let ocr = await scanOCR(canvas.toDataURL("image/jpeg"));
 
-text = clean(text);
+let text = (barcode || ocr.data.text || "").toUpperCase();
 
 const plate = text.match(/[A-Z]{2,3}\d{2,6}/)?.[0] || "";
 const vin = text.match(/[A-HJ-NPR-Z0-9]{17}/)?.[0] || "";
@@ -308,30 +289,54 @@ ID : <span>-</span>
 `;
 
 document.getElementById("status").innerHTML =
-"<span class='success'>Captured ✔</span>";
+"<span class='success'>Scan complete ✔</span>";
 };
 
-/* ================= SECURITY ================= */
+/* ================= VERIFY (FIXED) ================= */
 window.verify = async function(){
 
-const code = document.getElementById("code").value;
+const code = document.getElementById("code").value.trim();
 
-const q = query(collection(db,"visitorCodes"),where("code","==",code));
-const snap = await getDocs(q);
+if(!code){
+document.getElementById("verifyOut").innerHTML =
+"<span class='error'>Enter code</span>";
+return;
+}
+
+try{
+
+const snap = await getDocs(collection(db,"visitorCodes"));
 
 if(snap.empty){
+document.getElementById("verifyOut").innerHTML =
+"<span class='error'>NO DATA</span>";
+return;
+}
+
+let found = null;
+
+snap.forEach(doc=>{
+if(doc.data().code === code){
+found = doc.data();
+}
+});
+
+if(!found){
 document.getElementById("verifyOut").innerHTML =
 "<span class='error'>INVALID CODE ❌</span>";
 return;
 }
 
-const d = snap.docs[0].data();
-
 document.getElementById("verifyOut").innerHTML = `
 <span class="success">ACCESS GRANTED ✔</span><br><br>
-Resident: ${d.resident}<br>
-House: ${d.houseNumber}
+Resident: ${found.resident}<br>
+House: ${found.houseNumber}
 `;
+
+}catch(err){
+document.getElementById("verifyOut").innerHTML =
+"<span class='error'>Verification error</span>";
+}
 
 };
 
