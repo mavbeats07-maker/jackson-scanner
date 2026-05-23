@@ -261,55 +261,119 @@ document.getElementById("panicMap").src = "";
 
 };
 /* ================= SCAN ================= */
-window.scan = async function(){
+window.scan = async function () {
+
+const status = document.getElementById("status");
+const output = document.getElementById("output");
 
 const canvas = document.createElement("canvas");
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
-canvas.getContext("2d").drawImage(video,0,0);
 
-try{
+const ctx = canvas.getContext("2d");
+ctx.drawImage(video, 0, 0);
 
-const reader = new ZXingBrowser.BrowserMultiFormatReader();
-const res = await reader.decodeFromCanvas(canvas);
+/* =========================
+STEP 1: BARCODE ONLY
+========================= */
 
-document.getElementById("output").innerHTML =
-`Plate: <span>${res.text}</span><br>VIN: <span>-</span>`;
+if (scanStep === 1) {
 
-}catch{
+status.innerHTML = "Scanning barcode only...";
 
-const text = (await Tesseract.recognize(canvas.toDataURL(),"eng")).data.text;
-
-document.getElementById("output").innerHTML =
-`Plate: <span>${text.slice(0,10)}</span><br>VIN: <span>-</span>`;
-}
-
-};
-
-/* ================= VERIFY ================= */
-window.verify = async function () {
-
-const codeInput = document.getElementById("code");
-const out = document.getElementById("verifyOut");
-
-const code = (codeInput.value || "").trim();
-
-if (!code) {
-out.innerHTML = "<span class='error'>ENTER ACCESS CODE</span>";
-return;
-}
+/* 🔥 SCAN BOX (SMALL - DISC FOCUS) */
+setScanBox(0.2, 0.25, 0.6, 0.3);
 
 try {
 
-/* 🔥 SAFE QUERY (string-safe + reliable) */
-const q = query(collection(db, "visitorCodes"));
-const snap = await getDocs(q);
+const reader = new ZXingBrowser.BrowserMultiFormatReader();
+const result = await reader.decodeFromCanvas(canvas);
 
-if (snap.empty) {
-out.innerHTML = "<span class='error'>NO CODES IN DATABASE</span>";
+if (!result || !result.text) {
+status.innerHTML = "<span class='error'>Barcode not detected ❌</span>";
 return;
 }
 
+const barcodeText = result.text;
+
+/* store raw disc data */
+vehicleData = {
+rawBarcode: barcodeText
+};
+
+/* show result */
+output.innerHTML = `
+Disc Barcode: <span>${barcodeText}</span><br>
+Car Make: <span>-</span><br>
+VIN: <span>-</span>
+`;
+
+status.innerHTML = "<span class='success'>Step 1 complete ✔</span>";
+
+/* move to step 2 */
+scanStep = 2;
+
+setTimeout(() => {
+status.innerHTML = "Now scan ID / Driver’s License";
+}, 800);
+
+return;
+
+} catch (err) {
+
+console.log("Barcode error:", err);
+status.innerHTML = "<span class='error'>No barcode detected ❌</span>";
+return;
+
+}
+
+}
+
+/* =========================
+STEP 2: OCR ONLY (ID)
+========================= */
+
+if (scanStep === 2) {
+
+status.innerHTML = "Scanning ID...";
+
+/* BIGGER BOX FOR ID */
+setScanBox(0.15, 0.2, 0.7, 0.5);
+
+const result = await Tesseract.recognize(
+canvas.toDataURL(),
+"eng"
+);
+
+const text = result.data.text || "";
+
+/* SA ID extraction (13 digits) */
+const idMatch = text.match(/\d{13}/);
+
+if (!idMatch) {
+status.innerHTML = "<span class='error'>ID not found ❌</span>";
+return;
+}
+
+const idNumber = idMatch[0];
+
+/* FINAL OUTPUT */
+output.innerHTML = `
+Disc Barcode: <span>${vehicleData.rawBarcode}</span><br>
+ID Number: <span>${idNumber}</span>
+`;
+
+status.innerHTML = "<span class='success'>Full scan complete ✔</span>";
+
+/* reset system */
+scanStep = 1;
+vehicleData = {};
+
+return;
+
+}
+
+};
 let found = null;
 
 /* 🔍 MANUAL MATCH (100% RELIABLE) */
