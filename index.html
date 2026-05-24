@@ -16,40 +16,63 @@
       padding: 15px;
     }
 
-    button, input {
+    h2 { color: #00ffd5; }
+
+    input, button {
       padding: 10px;
       margin: 10px;
+      border-radius: 8px;
     }
 
-    pre {
-      background: black;
-      color: #00ff88;
+    .card {
+      background: #111;
       padding: 15px;
+      margin-top: 15px;
+      border-radius: 12px;
       text-align: left;
-      border-radius: 10px;
-      overflow-x: auto;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 0 10px #00ffd5;
     }
 
-    h2 { color: #00ffd5; }
+    .label {
+      color: #00ffd5;
+      font-weight: bold;
+    }
+
+    .value {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .loading {
+      color: yellow;
+    }
   </style>
 </head>
 
 <body>
 
-<h2>🚗 AI Car Disc Scanner (NO OCR)</h2>
+<h2>🚗 AI Car Disc Scanner</h2>
 
 <input type="file" accept="image/*" capture="environment" id="camera">
-
 <br>
-
 <button onclick="scanDisc()">📸 Scan Disc</button>
 
-<pre id="output">Waiting...</pre>
+<div id="status"></div>
+
+<div id="result" class="card" style="display:none;">
+  <div><span class="label">Registration:</span> <div id="reg" class="value"></div></div>
+  <div><span class="label">Make:</span> <div id="make" class="value"></div></div>
+  <div><span class="label">Model:</span> <div id="model" class="value"></div></div>
+  <div><span class="label">VIN:</span> <div id="vin" class="value"></div></div>
+  <div><span class="label">Expiry Date:</span> <div id="expiry" class="value"></div></div>
+  <div><span class="label">Disc Number:</span> <div id="disc" class="value"></div></div>
+</div>
 
 <script>
-/* =========================
-   FIREBASE SETUP
-========================= */
+/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -62,19 +85,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* =========================
-   AI VISION API (NO OCR)
-========================= */
+/* ================= OPENAI ================= */
 const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
 
-/* =========================
-   SCAN FUNCTION
-========================= */
+/* ================= MAIN FUNCTION ================= */
 async function scanDisc() {
   const file = document.getElementById("camera").files[0];
   if (!file) return alert("Take a photo first");
 
-  document.getElementById("output").innerText = "Analyzing AI vision...";
+  document.getElementById("status").innerHTML =
+    "<p class='loading'>🔍 AI is analyzing disc...</p>";
 
   const base64 = await toBase64(file);
 
@@ -93,9 +113,7 @@ async function scanDisc() {
             {
               type: "input_text",
               text: `
-You are a vehicle disc intelligence system.
-
-Extract ONLY visible data and return STRICT JSON:
+Extract vehicle disc information and return ONLY JSON:
 
 {
   "registration_number": "",
@@ -109,7 +127,7 @@ Extract ONLY visible data and return STRICT JSON:
 Rules:
 - No guessing
 - If not visible return null
-- Output ONLY JSON
+- JSON only
               `
             },
             {
@@ -123,37 +141,41 @@ Rules:
   });
 
   const data = await response.json();
-
   let text = data.output?.[0]?.content?.[0]?.text || "{}";
 
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch {
-    parsed = { raw_output: text };
+    parsed = {};
   }
 
-  document.getElementById("output").innerText =
-    JSON.stringify(parsed, null, 2);
+  /* ================= SHOW ON SCREEN ================= */
+  document.getElementById("status").innerHTML = "✅ Scan Complete";
 
-  /* =========================
-     SAVE TO FIREBASE
-  ========================= */
+  document.getElementById("result").style.display = "block";
+
+  document.getElementById("reg").innerText = parsed.registration_number || "Not found";
+  document.getElementById("make").innerText = parsed.vehicle_make || "Not found";
+  document.getElementById("model").innerText = parsed.vehicle_model || "Not found";
+  document.getElementById("vin").innerText = parsed.vin_number || "Not found";
+  document.getElementById("expiry").innerText = parsed.expiry_date || "Not found";
+  document.getElementById("disc").innerText = parsed.disc_number || "Not found";
+
+  /* ================= SAVE TO FIREBASE ================= */
   await db.collection("scans").add({
     result: parsed,
     timestamp: new Date().toISOString()
   });
 }
 
-/* =========================
-   CONVERT IMAGE TO BASE64
-========================= */
+/* ================= BASE64 ================= */
 function toBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
+    reader.onerror = reject;
   });
 }
 </script>
