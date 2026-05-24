@@ -1,49 +1,64 @@
+# SA Vehicle Disc Photo Decoder System
+
+This system lets a user:
+
+* Take a picture of a South African vehicle disc
+* Decode the barcode from the image
+* Extract vehicle information automatically
+* Display decoded data
+
+---
+
+## Full HTML Code
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SA Vehicle Disc Scanner</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA Disc Photo Decoder</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
 
 <style>
+
 body{
 margin:0;
 font-family:Segoe UI;
-background:#0b0f14;
+background:#0f172a;
 color:white;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
+padding:20px;
 }
 
 .container{
-width:95%;
 max-width:900px;
+margin:auto;
 }
 
 .card{
 background:#111827;
-padding:15px;
-border-radius:12px;
+padding:20px;
+border-radius:14px;
 }
 
-video{
+input{
 width:100%;
-border-radius:12px;
-background:black;
+padding:14px;
+background:#1e293b;
+color:white;
+border:none;
+border-radius:10px;
 }
 
 button{
 width:100%;
-padding:12px;
-margin-top:10px;
-border:none;
-border-radius:8px;
+padding:14px;
+margin-top:15px;
 background:#2563eb;
 color:white;
+border:none;
+border-radius:10px;
 font-weight:bold;
 cursor:pointer;
 }
@@ -52,11 +67,17 @@ button:hover{
 background:#1d4ed8;
 }
 
-.result{
+img{
+width:100%;
 margin-top:15px;
-background:#0f172a;
-padding:12px;
-border-radius:10px;
+border-radius:12px;
+}
+
+.result{
+margin-top:20px;
+background:#1e293b;
+padding:15px;
+border-radius:12px;
 line-height:1.8;
 }
 
@@ -66,32 +87,57 @@ font-weight:bold;
 }
 
 .status{
-margin-top:10px;
+margin-top:15px;
 color:#38bdf8;
+font-weight:bold;
 }
+
 </style>
 </head>
-
 <body>
 
 <div class="container">
 
 <div class="card">
 
-<h2>🚗 SA Vehicle Disc Scanner</h2>
+<h2>🚗 SA Vehicle Disc Photo Decoder</h2>
 
-<video id="video" autoplay playsinline></video>
+<input
+id="fileInput"
+type="file"
+accept="image/*"
+>
 
-<button onclick="startScan()">START SCAN</button>
+<button onclick="decodeDisc()">
+DECODE DISC PHOTO
+</button>
 
-<p class="status" id="status">Ready</p>
+<p class="status" id="status">
+Waiting for image...
+</p>
+
+<img id="preview">
 
 <div class="result" id="output">
-Plate: <span>-</span><br>
-VIN: <span>-</span><br>
-Engine: <span>-</span><br>
-Disc Number: <span>-</span><br>
-Raw Data: <span>-</span>
+
+Plate:
+<span>-</span><br>
+
+VIN:
+<span>-</span><br>
+
+Engine:
+<span>-</span><br>
+
+Disc Number:
+<span>-</span><br>
+
+Vehicle Make:
+<span>-</span><br>
+
+Raw Barcode:
+<span>-</span>
+
 </div>
 
 </div>
@@ -99,94 +145,211 @@ Raw Data: <span>-</span>
 </div>
 
 <script>
-const video = document.getElementById("video");
-const statusEl = document.getElementById("status");
-const output = document.getElementById("output");
 
-let scanner = null;
+const input =
+document.getElementById("fileInput");
 
-/* CAMERA */
-async function startCamera(){
+const preview =
+document.getElementById("preview");
+
+const output =
+document.getElementById("output");
+
+const statusText =
+document.getElementById("status");
+
+async function decodeDisc(){
+
+const file = input.files[0];
+
+if(!file){
+
+statusText.innerHTML =
+"Select a disc image first ❌";
+
+return;
+
+}
+
+/* SHOW IMAGE */
+
+preview.src = URL.createObjectURL(file);
+
+statusText.innerHTML =
+"Scanning barcode...";
+
 try{
-const stream = await navigator.mediaDevices.getUserMedia({
-video:{ facingMode:"environment" }
-});
 
-video.srcObject = stream;
-await video.play();
+const img = new Image();
+img.src = URL.createObjectURL(file);
 
-statusEl.innerText = "Camera ready ✔";
+img.onload = async ()=>{
 
-}catch(err){
-statusEl.innerText = "Camera blocked ❌";
-}
-}
-startCamera();
+const codeReader =
+new ZXingBrowser.BrowserMultiFormatReader();
 
-/* BARCODE SCANNER */
-async function startScan(){
+const result =
+await codeReader.decodeFromImageElement(img);
 
-statusEl.innerText = "Scanning disc barcode...";
+const text =
+(result.text || "")
+.toUpperCase();
 
-try{
+extractData(text);
 
-if(!scanner){
-scanner = new ZXingBrowser.BrowserMultiFormatReader();
-}
+statusText.innerHTML =
+"Vehicle disc decoded ✔";
 
-/* LIVE SCAN (IMPORTANT FIX) */
-const result = await scanner.decodeOnceFromVideoElement(video);
-
-const text = result.text || "";
-
-statusEl.innerText = "Disc detected ✔";
-
-/* =========================
-EXTRACT SA DISC DATA
-========================= */
-
-let plate = "";
-let vin = "";
-let engine = "";
-let disc = "";
-
-/* clean text */
-const data = text.toUpperCase();
-
-/* plate */
-const plateMatch = data.match(/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/);
-if(plateMatch) plate = plateMatch[0];
-
-/* VIN */
-const vinMatch = data.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
-if(vinMatch) vin = vinMatch[0];
-
-/* engine */
-const engineMatch = data.match(/\b[A-Z0-9]{6,15}\b/);
-if(engineMatch) engine = engineMatch[0];
-
-/* disc number */
-const discMatch = data.match(/\b\d{8,12}\b/);
-if(discMatch) disc = discMatch[0];
-
-/* SHOW OUTPUT */
-output.innerHTML = `
-Plate: <span>${plate || "-"}</span><br>
-VIN: <span>${vin || "-"}</span><br>
-Engine: <span>${engine || "-"}</span><br>
-Disc Number: <span>${disc || "-"}</span><br>
-Raw Data: <span>${text}</span>
-`;
+};
 
 }catch(err){
 
 console.log(err);
-statusEl.innerText = "No barcode detected ❌ Try again";
+
+statusText.innerHTML =
+"Barcode not detected ❌";
 
 }
 
 }
+
+function extractData(text){
+
+let plate = "-";
+let vin = "-";
+let engine = "-";
+let disc = "-";
+let make = "-";
+
+/* PLATE */
+const plateMatch =
+text.match(/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/);
+
+if(plateMatch){
+plate = plateMatch[0];
+}
+
+/* VIN */
+const vinMatch =
+text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+
+if(vinMatch){
+vin = vinMatch[0];
+}
+
+/* ENGINE */
+const engineMatch =
+text.match(/\b[A-Z0-9]{6,15}\b/);
+
+if(engineMatch){
+engine = engineMatch[0];
+}
+
+/* DISC NUMBER */
+const discMatch =
+text.match(/\b\d{8,12}\b/);
+
+if(discMatch){
+disc = discMatch[0];
+}
+
+/* VEHICLE MAKE */
+const makes = [
+"TOYOTA",
+"VOLKSWAGEN",
+"VW",
+"BMW",
+"MERCEDES",
+"FORD",
+"NISSAN",
+"AUDI",
+"HONDA",
+"HYUNDAI",
+"KIA",
+"ISUZU",
+"LEXUS",
+"MAZDA",
+"RENAULT",
+"VOLVO"
+];
+
+for(let m of makes){
+
+if(text.includes(m)){
+make = m;
+break;
+}
+
+}
+
+output.innerHTML = `
+
+Plate:
+<span>${plate}</span><br>
+
+VIN:
+<span>${vin}</span><br>
+
+Engine:
+<span>${engine}</span><br>
+
+Disc Number:
+<span>${disc}</span><br>
+
+Vehicle Make:
+<span>${make}</span><br>
+
+Raw Barcode:
+<span>${text}</span>
+
+`;
+
+}
+
 </script>
 
 </body>
 </html>
+```
+
+---
+
+## How It Works
+
+1. User uploads a picture of a South African vehicle disc
+2. System scans the barcode from the image
+3. Barcode is decoded automatically
+4. System extracts:
+
+   * Plate number
+   * VIN
+   * Engine number
+   * Disc number
+   * Vehicle make
+5. Results display instantly
+
+---
+
+## Important
+
+For best results:
+
+* Take clear pictures
+* Ensure barcode is visible
+* Avoid blurry images
+* Use good lighting
+* Keep phone steady
+
+---
+
+## Future Upgrades
+
+You can later add:
+
+* Firebase saving
+* Panic alert integration
+* Auto camera capture
+* SAPS style live scanning
+* Driver ID scanning
+* Gate access logging
+
