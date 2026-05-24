@@ -16,12 +16,9 @@
       padding: 15px;
     }
 
-    h2 { color: #00ffd5; }
-
     input, button {
       padding: 10px;
       margin: 10px;
-      border-radius: 8px;
     }
 
     .card {
@@ -29,26 +26,15 @@
       padding: 15px;
       margin-top: 15px;
       border-radius: 12px;
-      text-align: left;
-      max-width: 400px;
+      max-width: 420px;
       margin-left: auto;
       margin-right: auto;
-      box-shadow: 0 0 10px #00ffd5;
     }
 
-    .label {
-      color: #00ffd5;
-      font-weight: bold;
-    }
+    .label { color: #00ffd5; font-weight: bold; }
+    .value { margin-bottom: 8px; }
 
-    .value {
-      margin-bottom: 10px;
-      font-size: 16px;
-    }
-
-    .loading {
-      color: yellow;
-    }
+    #status { color: yellow; }
   </style>
 </head>
 
@@ -58,63 +44,63 @@
 
 <input type="file" accept="image/*" capture="environment" id="camera">
 <br>
-<button onclick="scanDisc()">📸 Scan Disc</button>
+<button onclick="scanDisc()">Scan Disc</button>
 
 <div id="status"></div>
 
-<div id="result" class="card" style="display:none;">
-  <div><span class="label">Registration:</span> <div id="reg" class="value"></div></div>
-  <div><span class="label">Make:</span> <div id="make" class="value"></div></div>
-  <div><span class="label">Model:</span> <div id="model" class="value"></div></div>
-  <div><span class="label">VIN:</span> <div id="vin" class="value"></div></div>
-  <div><span class="label">Expiry Date:</span> <div id="expiry" class="value"></div></div>
-  <div><span class="label">Disc Number:</span> <div id="disc" class="value"></div></div>
+<div class="card" id="result" style="display:none;">
+  <div><span class="label">Registration:</span> <div id="reg"></div></div>
+  <div><span class="label">Make:</span> <div id="make"></div></div>
+  <div><span class="label">Model:</span> <div id="model"></div></div>
+  <div><span class="label">VIN:</span> <div id="vin"></div></div>
+  <div><span class="label">Expiry:</span> <div id="expiry"></div></div>
+  <div><span class="label">Disc No:</span> <div id="disc"></div></div>
 </div>
 
 <script>
 /* ================= FIREBASE ================= */
-const firebaseConfig = {
+firebase.initializeApp({
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+  projectId: "YOUR_PROJECT_ID"
+});
 
-firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ================= OPENAI ================= */
+/* ================= OPENAI KEY ================= */
 const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
 
 /* ================= MAIN FUNCTION ================= */
 async function scanDisc() {
   const file = document.getElementById("camera").files[0];
-  if (!file) return alert("Take a photo first");
 
-  document.getElementById("status").innerHTML =
-    "<p class='loading'>🔍 AI is analyzing disc...</p>";
+  if (!file) {
+    alert("Take a picture first");
+    return;
+  }
+
+  document.getElementById("status").innerText = "Analyzing image...";
 
   const base64 = await toBase64(file);
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + OPENAI_API_KEY
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      input: [
-        {
+  try {
+    const res = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        input: [{
           role: "user",
           content: [
             {
               type: "input_text",
               text: `
-Extract vehicle disc information and return ONLY JSON:
+Extract vehicle disc data from this image.
 
+Return ONLY valid JSON:
 {
   "registration_number": "",
   "vehicle_make": "",
@@ -126,47 +112,65 @@ Extract vehicle disc information and return ONLY JSON:
 
 Rules:
 - No guessing
-- If not visible return null
+- If missing return null
 - JSON only
               `
             },
             {
               type: "input_image",
-              image_base64: base64.split(",")[1]
+              image_url: base64
             }
           ]
-        }
-      ]
-    })
-  });
+        }]
+      })
+    });
 
-  const data = await response.json();
-  let text = data.output?.[0]?.content?.[0]?.text || "{}";
+    const data = await res.json();
 
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    parsed = {};
+    console.log("RAW RESPONSE:", data);
+
+    let text =
+      data.output?.[0]?.content?.find(c => c.type === "output_text")?.text;
+
+    if (!text) {
+      document.getElementById("status").innerText =
+        "❌ AI returned no text (check console)";
+      return;
+    }
+
+    let parsed;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      document.getElementById("status").innerText =
+        "❌ JSON parse failed (AI returned invalid format)";
+      console.log(text);
+      return;
+    }
+
+    /* ================= SHOW ON SCREEN ================= */
+    document.getElementById("status").innerText = "✅ Scan Complete";
+    document.getElementById("result").style.display = "block";
+
+    document.getElementById("reg").innerText = parsed.registration_number || "Not found";
+    document.getElementById("make").innerText = parsed.vehicle_make || "Not found";
+    document.getElementById("model").innerText = parsed.vehicle_model || "Not found";
+    document.getElementById("vin").innerText = parsed.vin_number || "Not found";
+    document.getElementById("expiry").innerText = parsed.expiry_date || "Not found";
+    document.getElementById("disc").innerText = parsed.disc_number || "Not found";
+
+    /* ================= FIREBASE SAVE ================= */
+    await db.collection("scans").add({
+      ...parsed,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("status").innerText =
+      "❌ Error: check console (F12)";
   }
-
-  /* ================= SHOW ON SCREEN ================= */
-  document.getElementById("status").innerHTML = "✅ Scan Complete";
-
-  document.getElementById("result").style.display = "block";
-
-  document.getElementById("reg").innerText = parsed.registration_number || "Not found";
-  document.getElementById("make").innerText = parsed.vehicle_make || "Not found";
-  document.getElementById("model").innerText = parsed.vehicle_model || "Not found";
-  document.getElementById("vin").innerText = parsed.vin_number || "Not found";
-  document.getElementById("expiry").innerText = parsed.expiry_date || "Not found";
-  document.getElementById("disc").innerText = parsed.disc_number || "Not found";
-
-  /* ================= SAVE TO FIREBASE ================= */
-  await db.collection("scans").add({
-    result: parsed,
-    timestamp: new Date().toISOString()
-  });
 }
 
 /* ================= BASE64 ================= */
