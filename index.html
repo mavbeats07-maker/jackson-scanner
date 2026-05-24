@@ -1,187 +1,274 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>AI Car Disc Scanner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #0b0b0b;
-      color: white;
-      text-align: center;
-      padding: 15px;
-    }
+<title>JST Security Control System</title>
 
-    input, button {
-      padding: 10px;
-      margin: 10px;
-    }
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
 
-    .card {
-      background: #111;
-      padding: 15px;
-      margin-top: 15px;
-      border-radius: 12px;
-      max-width: 420px;
-      margin-left: auto;
-      margin-right: auto;
-    }
+<style>
+/* KEEP YOUR ORIGINAL CSS EXACTLY */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Segoe UI;background:linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");background-size:cover;background-position:center;min-height:100vh;color:white;}
+.container{padding:15px;max-width:950px;margin:auto;}
+.card{background:rgba(255,255,255,0.12);padding:15px;border-radius:15px;margin-bottom:15px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.12);}
+.videoWrap{position:relative;}
+video{width:100%;border-radius:15px;background:black;}
+.scanBox{position:absolute;border:3px solid #00ff88;box-shadow:0 0 20px #00ff88;border-radius:12px;pointer-events:none;}
+.scanLine{position:absolute;height:3px;background:#00ff88;box-shadow:0 0 15px #00ff88;animation:scanMove 2s linear infinite;pointer-events:none;}
+@keyframes scanMove{0%{transform:translateY(0px);}50%{transform:translateY(180px);}100%{transform:translateY(0px);}}
+button{width:100%;padding:14px;border:none;border-radius:10px;background:#0a2a43;color:white;font-weight:bold;margin-top:10px;cursor:pointer;font-size:15px;}
+button:hover{background:#06304d;}
+input{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none;outline:none;}
+.result{margin-top:15px;background:rgba(0,0,0,0.45);padding:12px;border-radius:10px;line-height:1.8;}
+.result span{color:#00ff88;font-weight:bold;}
+.success{color:#00ff88;font-weight:bold;}
+.error{color:#ff4d4d;font-weight:bold;}
+.step{color:#00d9ff;font-weight:bold;margin-bottom:10px;}
+.alertMode{animation:flashRed 0.7s infinite;}
+@keyframes flashRed{0%{background-color:#1b0000;}50%{background-color:#8b0000;}100%{background-color:#1b0000;}}
+#panicPanel{display:none;border:2px solid red;}
+#panicPanel iframe{width:100%;height:300px;border:none;border-radius:12px;margin-top:15px;}
+.stopBtn{background:#b30000;font-size:18px;}
+</style>
 
-    .label { color: #00ffd5; font-weight: bold; }
-    .value { margin-bottom: 8px; }
-
-    #status { color: yellow; }
-  </style>
 </head>
 
 <body>
 
-<h2>🚗 AI Car Disc Scanner</h2>
+<div class="container">
 
-<input type="file" accept="image/*" capture="environment" id="camera">
-<br>
-<button onclick="scanDisc()">Scan Disc</button>
+<h2>🚗 JST Security Control System</h2>
 
-<div id="status"></div>
-
-<div class="card" id="result" style="display:none;">
-  <div><span class="label">Registration:</span> <div id="reg"></div></div>
-  <div><span class="label">Make:</span> <div id="make"></div></div>
-  <div><span class="label">Model:</span> <div id="model"></div></div>
-  <div><span class="label">VIN:</span> <div id="vin"></div></div>
-  <div><span class="label">Expiry:</span> <div id="expiry"></div></div>
-  <div><span class="label">Disc No:</span> <div id="disc"></div></div>
+<div class="card" id="panicPanel">
+<h2 style="color:red;">🚨 LIVE PANIC ALERT</h2>
+<p id="panicText"></p>
+<iframe id="panicMap"></iframe>
+<button class="stopBtn" onclick="stopAlarm()">STOP ALARM</button>
 </div>
 
-<script>
-/* ================= FIREBASE ================= */
-firebase.initializeApp({
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID"
+<div class="card">
+<p class="step" id="stepText">STEP 1 : Scan SA Vehicle Disc Barcode</p>
+
+<div class="videoWrap">
+<video id="video" autoplay playsinline muted></video>
+<div class="scanBox" id="scanBox"></div>
+<div class="scanLine" id="scanLine"></div>
+</div>
+
+<button onclick="scan()">SCAN DOCUMENT</button>
+
+<p id="status">Starting camera...</p>
+
+<div class="result" id="output">
+Plate : <span>-</span><br>
+Car Make : <span>-</span><br>
+VIN : <span>-</span><br>
+Engine : <span>-</span><br>
+Disc Number : <span>-</span><br>
+ID Number : <span>-</span>
+</div>
+</div>
+
+<div class="card">
+<h3>🔐 Security Panel</h3>
+<input id="code" placeholder="Enter Access Code">
+<button onclick="verify()">VERIFY ACCESS</button>
+<p id="verifyOut"></p>
+</div>
+
+</div>
+
+<audio id="panicSiren" loop>
+<source src="https://actions.google.com/sounds/v1/emergency/police_siren.ogg">
+</audio>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs, onSnapshot, orderBy, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+/* FIREBASE */
+const firebaseConfig = {
+apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
+authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
+projectId: "jackson-smart-technologi-1db26"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ELEMENTS */
+const video = document.getElementById("video");
+const statusText = document.getElementById("status");
+const output = document.getElementById("output");
+const stepText = document.getElementById("stepText");
+const panicAudio = document.getElementById("panicSiren");
+const scanBox = document.getElementById("scanBox");
+const scanLine = document.getElementById("scanLine");
+
+let scanStep = 1;
+let vehicleData = {};
+let scanner = null;
+let activePanicId = null;
+
+/* CAMERA FIX */
+async function startCamera(){
+try{
+const stream = await navigator.mediaDevices.getUserMedia({
+video:{facingMode:"environment"}
+});
+video.srcObject = stream;
+await video.play();
+statusText.innerHTML = "<span class='success'>Camera Ready ✔</span>";
+setDiscScanBox();
+}catch(e){
+console.log(e);
+statusText.innerHTML = "<span class='error'>Camera Failed ❌</span>";
+}
+}
+startCamera();
+
+/* SCAN BOX */
+function setDiscScanBox(){
+scanBox.style.top="22%";
+scanBox.style.left="15%";
+scanBox.style.width="70%";
+scanBox.style.height="28%";
+}
+
+/* FIXED ZXING */
+async function scanBarcode(canvas){
+try{
+if(!scanner){
+scanner = new ZXingBrowser.BrowserMultiFormatReader();
+}
+const result = await scanner.decodeFromCanvas(canvas);
+return result?.text || "";
+}catch(e){
+console.log("Barcode error:", e);
+return "";
+}
+}
+
+/* FIXED OCR */
+async function scanOCR(image){
+return await Tesseract.recognize(image,"eng",{logger:m=>console.log(m)});
+}
+
+/* CLEAN */
+function clean(t){
+return t.replace(/\n/g," ").replace(/\s+/g," ").toUpperCase().trim();
+}
+
+function getID(text){
+const m = text.match(/\b\d{13}\b/);
+return m ? m[0] : "";
+}
+
+/* MAIN SCAN FIXED */
+window.scan = async function(){
+
+statusText.innerText = "Scanning...";
+
+const canvas = document.createElement("canvas");
+
+/* FIX: correct scaling + crop */
+const scale = 0.75;
+canvas.width = video.videoWidth * scale;
+canvas.height = video.videoHeight * scale;
+
+const ctx = canvas.getContext("2d");
+
+ctx.drawImage(
+video,
+(video.videoWidth - canvas.width)/2,
+(video.videoHeight - canvas.height)/2,
+canvas.width,
+canvas.height,
+0,0,
+canvas.width,
+canvas.height
+);
+
+if(scanStep === 1){
+
+const barcodeText = await scanBarcode(canvas);
+
+if(!barcodeText){
+statusText.innerHTML = "<span class='error'>Barcode Not Detected ❌</span>";
+return;
+}
+
+const text = clean(barcodeText);
+
+vehicleData = {
+plate: text.match(/[A-Z0-9]{6,10}/)?.[0] || "",
+vin: text.match(/[A-HJ-NPR-Z0-9]{17}/)?.[0] || "",
+discNumber: text.match(/\d{8,12}/)?.[0] || "",
+rawBarcode: text
+};
+
+output.innerHTML = `
+Plate : <span>${vehicleData.plate}</span><br>
+Car Make : <span>-</span><br>
+VIN : <span>${vehicleData.vin}</span><br>
+Engine : <span>-</span><br>
+Disc Number : <span>${vehicleData.discNumber}</span><br>
+ID Number : <span>-</span>
+`;
+
+statusText.innerHTML = "<span class='success'>Step 1 Complete ✔</span>";
+
+scanStep = 2;
+stepText.innerText = "STEP 2 : Scan ID";
+
+return;
+}
+
+if(scanStep === 2){
+
+const result = await scanOCR(canvas.toDataURL("image/jpeg"));
+
+const text = result.data.text;
+const id = getID(text);
+
+if(!id){
+statusText.innerHTML = "<span class='error'>ID Not Found ❌</span>";
+return;
+}
+
+await addDoc(collection(db,"vehicleAccessLogs"),{
+vehicle:vehicleData,
+idNumber:id,
+time:Date.now()
 });
 
-const db = firebase.firestore();
+output.innerHTML += `<br>ID Number : <span>${id}</span>`;
+statusText.innerHTML = "<span class='success'>FULL SCAN COMPLETE ✔</span>";
 
-/* ================= OPENAI KEY ================= */
-const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY";
+scanStep = 1;
+}
+};
 
-/* ================= MAIN FUNCTION ================= */
-async function scanDisc() {
-  const file = document.getElementById("camera").files[0];
+/* VERIFY (UNCHANGED SAFE) */
+window.verify = async function(){
+const code = document.getElementById("code").value;
+const q = query(collection(db,"visitorCodes"),where("code","==",code));
+const snap = await getDocs(q);
 
-  if (!file) {
-    alert("Take a picture first");
-    return;
-  }
-
-  document.getElementById("status").innerText = "Analyzing image...";
-
-  const base64 = await toBase64(file);
-
-  try {
-    const res = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + OPENAI_API_KEY
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        input: [{
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `
-Extract vehicle disc data from this image.
-
-Return ONLY valid JSON:
-{
-  "registration_number": "",
-  "vehicle_make": "",
-  "vehicle_model": "",
-  "vin_number": "",
-  "expiry_date": "",
-  "disc_number": ""
+if(snap.empty){
+document.getElementById("verifyOut").innerHTML = "<span class='error'>INVALID</span>";
+return;
 }
 
-Rules:
-- No guessing
-- If missing return null
-- JSON only
-              `
-            },
-            {
-              type: "input_image",
-              image_url: base64
-            }
-          ]
-        }]
-      })
-    });
+document.getElementById("verifyOut").innerHTML = "<span class='success'>ACCESS GRANTED ✔</span>";
+};
 
-    const data = await res.json();
-
-    console.log("RAW RESPONSE:", data);
-
-    let text =
-      data.output?.[0]?.content?.find(c => c.type === "output_text")?.text;
-
-    if (!text) {
-      document.getElementById("status").innerText =
-        "❌ AI returned no text (check console)";
-      return;
-    }
-
-    let parsed;
-
-    try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      document.getElementById("status").innerText =
-        "❌ JSON parse failed (AI returned invalid format)";
-      console.log(text);
-      return;
-    }
-
-    /* ================= SHOW ON SCREEN ================= */
-    document.getElementById("status").innerText = "✅ Scan Complete";
-    document.getElementById("result").style.display = "block";
-
-    document.getElementById("reg").innerText = parsed.registration_number || "Not found";
-    document.getElementById("make").innerText = parsed.vehicle_make || "Not found";
-    document.getElementById("model").innerText = parsed.vehicle_model || "Not found";
-    document.getElementById("vin").innerText = parsed.vin_number || "Not found";
-    document.getElementById("expiry").innerText = parsed.expiry_date || "Not found";
-    document.getElementById("disc").innerText = parsed.disc_number || "Not found";
-
-    /* ================= FIREBASE SAVE ================= */
-    await db.collection("scans").add({
-      ...parsed,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("status").innerText =
-      "❌ Error: check console (F12)";
-  }
-}
-
-/* ================= BASE64 ================= */
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-  });
-}
 </script>
 
 </body>
