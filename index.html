@@ -1,988 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SA Vehicle Disc Scanner</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>JST Security Control System</title>
-
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
 
 <style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-}
-
 body{
+margin:0;
 font-family:Segoe UI;
-background:
-linear-gradient(rgba(0,0,0,0.78),rgba(0,0,0,0.88)),
-url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
-
-background-size:cover;
-background-position:center;
-min-height:100vh;
+background:#0b0f14;
 color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
 }
 
 .container{
-padding:15px;
-max-width:950px;
-margin:auto;
+width:95%;
+max-width:900px;
 }
 
 .card{
-background:rgba(255,255,255,0.12);
+background:#111827;
 padding:15px;
-border-radius:15px;
-margin-bottom:15px;
-backdrop-filter:blur(10px);
-border:1px solid rgba(255,255,255,0.12);
-}
-
-.videoWrap{
-position:relative;
+border-radius:12px;
 }
 
 video{
 width:100%;
-border-radius:15px;
-background:black;
-}
-
-.scanBox{
-position:absolute;
-border:3px solid #00ff88;
-box-shadow:0 0 20px #00ff88;
 border-radius:12px;
-pointer-events:none;
-transition:0.3s;
-}
-
-.scanLine{
-position:absolute;
-height:3px;
-background:#00ff88;
-box-shadow:0 0 15px #00ff88;
-animation:scanMove 2s linear infinite;
-pointer-events:none;
-transition:0.3s;
-}
-
-@keyframes scanMove{
-
-0%{
-transform:translateY(0px);
-}
-
-50%{
-transform:translateY(180px);
-}
-
-100%{
-transform:translateY(0px);
-}
-
+background:black;
 }
 
 button{
 width:100%;
-padding:14px;
+padding:12px;
+margin-top:10px;
 border:none;
-border-radius:10px;
-background:#0a2a43;
+border-radius:8px;
+background:#2563eb;
 color:white;
 font-weight:bold;
-margin-top:10px;
 cursor:pointer;
-font-size:15px;
 }
 
 button:hover{
-background:#06304d;
-}
-
-input{
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:8px;
-border:none;
-outline:none;
+background:#1d4ed8;
 }
 
 .result{
 margin-top:15px;
-background:rgba(0,0,0,0.45);
+background:#0f172a;
 padding:12px;
 border-radius:10px;
 line-height:1.8;
 }
 
-.result span{
-color:#00ff88;
+span{
+color:#22c55e;
 font-weight:bold;
 }
 
-.success{
-color:#00ff88;
-font-weight:bold;
+.status{
+margin-top:10px;
+color:#38bdf8;
 }
-
-.error{
-color:#ff4d4d;
-font-weight:bold;
-}
-
-.step{
-color:#00d9ff;
-font-weight:bold;
-margin-bottom:10px;
-}
-
-/* PANIC */
-
-.alertMode{
-animation:flashRed 0.7s infinite;
-}
-
-@keyframes flashRed{
-
-0%{
-background-color:#1b0000;
-}
-
-50%{
-background-color:#8b0000;
-}
-
-100%{
-background-color:#1b0000;
-}
-
-}
-
-#panicPanel{
-display:none;
-border:2px solid red;
-}
-
-#panicPanel iframe{
-width:100%;
-height:300px;
-border:none;
-border-radius:12px;
-margin-top:15px;
-}
-
-.stopBtn{
-background:#b30000;
-font-size:18px;
-}
-
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>
-🚗 JST Security Control System
-</h2>
-
-<!-- PANIC PANEL -->
-
-<div class="card" id="panicPanel">
-
-<h2 style="color:red;">
-🚨 LIVE PANIC ALERT
-</h2>
-
-<p id="panicText"></p>
-
-<iframe id="panicMap"></iframe>
-
-<button
-class="stopBtn"
-onclick="stopAlarm()">
-STOP ALARM
-</button>
-
-</div>
-
-<!-- SCANNER -->
-
 <div class="card">
 
-<p class="step" id="stepText">
-STEP 1 : Scan SA Vehicle Disc Barcode
-</p>
+<h2>🚗 SA Vehicle Disc Scanner</h2>
 
-<div class="videoWrap">
+<video id="video" autoplay playsinline></video>
 
-<video
-id="video"
-autoplay
-playsinline
-muted>
-</video>
+<button onclick="startScan()">START SCAN</button>
 
-<div
-class="scanBox"
-id="scanBox">
-</div>
-
-<div
-class="scanLine"
-id="scanLine">
-</div>
-
-</div>
-
-<button onclick="scan()">
-SCAN DOCUMENT
-</button>
-
-<p id="status" style="margin-top:10px;">
-Starting camera...
-</p>
+<p class="status" id="status">Ready</p>
 
 <div class="result" id="output">
-
-Plate :
-<span>-</span><br>
-
-Car Make :
-<span>-</span><br>
-
-VIN :
-<span>-</span><br>
-
-Engine :
-<span>-</span><br>
-
-Disc Number :
-<span>-</span><br>
-
-ID Number :
-<span>-</span>
+Plate: <span>-</span><br>
+VIN: <span>-</span><br>
+Engine: <span>-</span><br>
+Disc Number: <span>-</span><br>
+Raw Data: <span>-</span>
+</div>
 
 </div>
 
 </div>
 
-<!-- SECURITY -->
-
-<div class="card">
-
-<h3>
-🔐 Security Panel
-</h3>
-
-<input
-id="code"
-placeholder="Enter Access Code">
-
-<button onclick="verify()">
-VERIFY ACCESS
-</button>
-
-<p id="verifyOut"></p>
-
-</div>
-
-</div>
-
-<!-- SIREN -->
-
-<audio
-id="panicSiren"
-loop
-preload="auto">
-
-<source
-src="https://actions.google.com/sounds/v1/emergency/police_siren.ogg"
-type="audio/ogg">
-
-</audio>
-
-<script type="module">
-
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
-import {
-
-getFirestore,
-collection,
-query,
-where,
-getDocs,
-onSnapshot,
-orderBy,
-limit,
-addDoc
-
-}
-
-from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-/* FIREBASE */
-
-const firebaseConfig = {
-
-apiKey: "AIzaSyBD_sK8xF3m2t_s_b8ihzLx8XHs-M1MGGI",
-
-authDomain: "jackson-smart-technologi-1db26.firebaseapp.com",
-
-projectId: "jackson-smart-technologi-1db26"
-
-};
-
-const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
-/* GLOBALS */
-
-const video =
-document.getElementById("video");
-
-const statusText =
-document.getElementById("status");
-
-const output =
-document.getElementById("output");
-
-const stepText =
-document.getElementById("stepText");
-
-const panicAudio =
-document.getElementById("panicSiren");
-
-const scanBox =
-document.getElementById("scanBox");
-
-const scanLine =
-document.getElementById("scanLine");
-
-let scanStep = 1;
-
-let vehicleData = {};
-
-let activePanicId = null;
+<script>
+const video = document.getElementById("video");
+const statusEl = document.getElementById("status");
+const output = document.getElementById("output");
 
 let scanner = null;
 
 /* CAMERA */
-
 async function startCamera(){
-
 try{
-
-const stream =
-await navigator.mediaDevices.getUserMedia({
-
-video:{
-facingMode:{
-ideal:"environment"
-},
-width:{ideal:1920},
-height:{ideal:1080}
-},
-
-audio:false
-
+const stream = await navigator.mediaDevices.getUserMedia({
+video:{ facingMode:"environment" }
 });
 
 video.srcObject = stream;
-
 await video.play();
 
-statusText.innerHTML =
-"<span class='success'>Camera Ready ✔</span>";
-
-setDiscScanBox();
+statusEl.innerText = "Camera ready ✔";
 
 }catch(err){
-
-console.log(err);
-
-statusText.innerHTML =
-"<span class='error'>Camera Failed ❌</span>";
-
+statusEl.innerText = "Camera blocked ❌";
 }
-
 }
-
 startCamera();
 
-/* SCAN BOXES */
+/* BARCODE SCANNER */
+async function startScan(){
 
-function setDiscScanBox(){
-
-scanBox.style.top = "22%";
-scanBox.style.left = "15%";
-scanBox.style.width = "70%";
-scanBox.style.height = "28%";
-
-scanLine.style.top = "25%";
-scanLine.style.left = "15%";
-scanLine.style.width = "70%";
-
-}
-
-function setIDScanBox(){
-
-scanBox.style.top = "15%";
-scanBox.style.left = "10%";
-scanBox.style.width = "80%";
-scanBox.style.height = "50%";
-
-scanLine.style.top = "18%";
-scanLine.style.left = "10%";
-scanLine.style.width = "80%";
-
-}
-
-/* PANIC ALERTS */
-
-const panicQuery = query(
-
-collection(db,"panicAlerts"),
-orderBy("time","desc"),
-limit(1)
-
-);
-
-onSnapshot(panicQuery,(snapshot)=>{
-
-snapshot.forEach(async(doc)=>{
-
-if(activePanicId === doc.id){
-return;
-}
-
-activePanicId = doc.id;
-
-const data = doc.data();
-
-/* SHOW */
-
-document.getElementById("panicPanel")
-.style.display = "block";
-
-/* TEXT */
-
-document.getElementById("panicText")
-.innerHTML = `
-
-<b style="font-size:28px;color:red;">
-🚨 PANIC ALERT ACTIVE
-</b>
-
-<br><br>
-
-Resident:
-<b>${data.resident || "Unknown"}</b>
-
-<br><br>
-
-Latitude:
-<b>${data.latitude}</b>
-
-<br><br>
-
-Longitude:
-<b>${data.longitude}</b>
-
-<br><br>
-
-Accuracy:
-<b>${Math.round(data.accuracy || 0)}m</b>
-
-<br><br>
-
-Time:
-<b>${new Date(data.time).toLocaleString()}</b>
-
-`;
-
-/* MAP */
-
-document.getElementById("panicMap").src =
-
-`https://maps.google.com/maps?q=${data.latitude},${data.longitude}&z=18&output=embed`;
-
-/* FLASH */
-
-document.body.classList.add("alertMode");
-
-/* SIREN */
-
-try{
-
-panicAudio.pause();
-
-panicAudio.currentTime = 0;
-
-await panicAudio.play();
-
-}catch(err){
-
-console.log(err);
-
-}
-
-/* VIBRATE */
-
-navigator.vibrate?.([500,200,500,200,1000]);
-
-});
-
-});
-
-/* STOP */
-
-window.stopAlarm = function(){
-
-panicAudio.pause();
-
-panicAudio.currentTime = 0;
-
-document.body.classList.remove("alertMode");
-
-document.getElementById("panicPanel")
-.style.display = "none";
-
-document.getElementById("panicText")
-.innerHTML = "";
-
-document.getElementById("panicMap")
-.src = "";
-
-};
-
-/* OCR */
-
-async function scanOCR(image){
-
-return await Tesseract.recognize(
-image,
-"eng"
-);
-
-}
-
-/* BARCODE */
-
-async function scanBarcode(canvas){
+statusEl.innerText = "Scanning disc barcode...";
 
 try{
 
 if(!scanner){
-
-scanner =
-new ZXingBrowser.BrowserMultiFormatReader();
-
+scanner = new ZXingBrowser.BrowserMultiFormatReader();
 }
 
-const result =
-await scanner.decodeFromCanvas(canvas);
+/* LIVE SCAN (IMPORTANT FIX) */
+const result = await scanner.decodeOnceFromVideoElement(video);
 
-return result.text || "";
+const text = result.text || "";
 
-}catch(err){
+statusEl.innerText = "Disc detected ✔";
 
-return "";
-
-}
-
-}
-
-/* CLEAN */
-
-function clean(text){
-
-return text
-.replace(/\n/g," ")
-.replace(/\s+/g," ")
-.toUpperCase()
-.trim();
-
-}
-
-/* ID */
-
-function getID(text){
-
-const match =
-text.match(/\b\d{13}\b/);
-
-return match ? match[0] : "";
-
-}
-
-/* MAIN SCAN */
-
-window.scan = async function(){
-
-if(!video.videoWidth){
-
-statusText.innerHTML =
-"<span class='error'>Camera Not Ready ❌</span>";
-
-return;
-
-}
-
-statusText.innerHTML = "Scanning...";
-
-/* FRAME */
-
-const canvas =
-document.createElement("canvas");
-
-canvas.width =
-video.videoWidth;
-
-canvas.height =
-video.videoHeight;
-
-const ctx =
-canvas.getContext("2d");
-
-ctx.drawImage(
-video,
-0,
-0,
-canvas.width,
-canvas.height
-);
-
-/* STEP 1 */
-
-if(scanStep === 1){
-
-statusText.innerHTML =
-"Reading SA Disc Barcode...";
-
-const barcodeText =
-await scanBarcode(canvas);
-
-if(!barcodeText){
-
-statusText.innerHTML =
-"<span class='error'>Barcode Not Detected ❌</span>";
-
-return;
-
-}
-
-const text =
-clean(barcodeText);
-
-/* EXTRACT */
+/* =========================
+EXTRACT SA DISC DATA
+========================= */
 
 let plate = "";
-let make = "";
 let vin = "";
 let engine = "";
-let discNumber = "";
+let disc = "";
 
-const plateMatch =
-text.match(/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/);
+/* clean text */
+const data = text.toUpperCase();
 
-if(plateMatch){
-plate = plateMatch[0];
-}
+/* plate */
+const plateMatch = data.match(/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/);
+if(plateMatch) plate = plateMatch[0];
 
-const vinMatch =
-text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+/* VIN */
+const vinMatch = data.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+if(vinMatch) vin = vinMatch[0];
 
-if(vinMatch){
-vin = vinMatch[0];
-}
+/* engine */
+const engineMatch = data.match(/\b[A-Z0-9]{6,15}\b/);
+if(engineMatch) engine = engineMatch[0];
 
-const discMatch =
-text.match(/\b\d{8,12}\b/);
+/* disc number */
+const discMatch = data.match(/\b\d{8,12}\b/);
+if(discMatch) disc = discMatch[0];
 
-if(discMatch){
-discNumber = discMatch[0];
-}
-
-const engineMatch =
-text.match(/\b[A-Z0-9]{6,15}\b/);
-
-if(engineMatch){
-engine = engineMatch[0];
-}
-
-const makes = [
-
-"TOYOTA",
-"VOLKSWAGEN",
-"VW",
-"BMW",
-"MERCEDES",
-"FORD",
-"NISSAN",
-"AUDI",
-"HYUNDAI",
-"KIA",
-"HONDA",
-"ISUZU",
-"MAZDA",
-"LEXUS"
-
-];
-
-for(let m of makes){
-
-if(text.includes(m)){
-
-make = m;
-break;
-
-}
-
-}
-
-/* SAVE */
-
-vehicleData = {
-
-plate,
-make,
-vin,
-engine,
-discNumber,
-rawBarcode:text
-
-};
-
-/* SHOW */
-
+/* SHOW OUTPUT */
 output.innerHTML = `
-
-Plate :
-<span>${plate || "-"}</span><br>
-
-Car Make :
-<span>${make || "-"}</span><br>
-
-VIN :
-<span>${vin || "-"}</span><br>
-
-Engine :
-<span>${engine || "-"}</span><br>
-
-Disc Number :
-<span>${discNumber || "-"}</span><br>
-
-ID Number :
-<span>-</span>
-
-`;
-
-statusText.innerHTML =
-"<span class='success'>Vehicle Disc Captured ✔</span>";
-
-scanStep = 2;
-
-stepText.innerText =
-"STEP 2 : Scan SA ID / Driver License";
-
-setIDScanBox();
-
-return;
-
-}
-
-/* STEP 2 */
-
-if(scanStep === 2){
-
-statusText.innerHTML =
-"Scanning ID / License...";
-
-const result =
-await scanOCR(
-
-canvas.toDataURL("image/jpeg",1)
-
-);
-
-const text =
-result.data.text || "";
-
-const idNumber =
-getID(text);
-
-if(!idNumber){
-
-statusText.innerHTML =
-"<span class='error'>ID Number Not Found ❌</span>";
-
-return;
-
-}
-
-/* SAVE FIREBASE */
-
-await addDoc(
-
-collection(db,"vehicleAccessLogs"),
-
-{
-
-vehicle:vehicleData,
-
-owner:{
-idNumber:idNumber
-},
-
-time:Date.now()
-
-}
-
-);
-
-/* SHOW */
-
-output.innerHTML = `
-
-Plate :
-<span>${vehicleData.plate || "-"}</span><br>
-
-Car Make :
-<span>${vehicleData.make || "-"}</span><br>
-
-VIN :
-<span>${vehicleData.vin || "-"}</span><br>
-
-Engine :
-<span>${vehicleData.engine || "-"}</span><br>
-
-Disc Number :
-<span>${vehicleData.discNumber || "-"}</span><br>
-
-ID Number :
-<span>${idNumber}</span>
-
-`;
-
-statusText.innerHTML =
-"<span class='success'>Full Scan Complete ✔</span>";
-
-scanStep = 1;
-
-vehicleData = {};
-
-stepText.innerText =
-"STEP 1 : Scan SA Vehicle Disc Barcode";
-
-setDiscScanBox();
-
-}
-
-};
-
-/* VERIFY */
-
-window.verify = async function(){
-
-const code =
-document.getElementById("code")
-.value
-.trim();
-
-const out =
-document.getElementById("verifyOut");
-
-if(!code){
-
-out.innerHTML =
-"<span class='error'>Enter Access Code</span>";
-
-return;
-
-}
-
-try{
-
-const q = query(
-
-collection(db,"visitorCodes"),
-where("code","==",code)
-
-);
-
-const snap =
-await getDocs(q);
-
-if(snap.empty){
-
-out.innerHTML =
-"<span class='error'>INVALID CODE ❌</span>";
-
-return;
-
-}
-
-const d =
-snap.docs[0].data();
-
-if(d.expiry && Date.now() > d.expiry){
-
-out.innerHTML =
-"<span class='error'>CODE EXPIRED ❌</span>";
-
-return;
-
-}
-
-out.innerHTML = `
-
-<span class='success'>
-ACCESS GRANTED ✔
-</span>
-
-<br><br>
-
-Resident:
-<b>${d.resident || "-"}</b>
-
-<br><br>
-
-Visitor:
-<b>${d.visitor || "-"}</b>
-
-<br><br>
-
-House:
-<b>${d.houseNumber || "-"}</b>
-
+Plate: <span>${plate || "-"}</span><br>
+VIN: <span>${vin || "-"}</span><br>
+Engine: <span>${engine || "-"}</span><br>
+Disc Number: <span>${disc || "-"}</span><br>
+Raw Data: <span>${text}</span>
 `;
 
 }catch(err){
 
 console.log(err);
-
-out.innerHTML =
-"<span class='error'>VERIFY FAILED ❌</span>";
+statusEl.innerText = "No barcode detected ❌ Try again";
 
 }
 
-};
-
+}
 </script>
 
 </body>
