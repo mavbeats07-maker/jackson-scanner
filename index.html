@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>JST Disc OCR Reader</title>
+<title>JST Smart Vehicle Disc Reader</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
@@ -19,56 +19,108 @@ box-sizing:border-box;
 
 body{
 font-family:Segoe UI;
-background:#0b1117;
+background:
+linear-gradient(rgba(0,0,0,0.75),rgba(0,0,0,0.90)),
+url("https://images.unsplash.com/photo-1503376780353-7e6692767b70");
+
+background-size:cover;
+background-position:center;
+min-height:100vh;
 color:white;
 padding:20px;
 }
 
 .container{
-max-width:850px;
+max-width:950px;
 margin:auto;
 }
 
 .card{
-background:#111927;
+background:rgba(255,255,255,0.12);
 padding:20px;
-border-radius:15px;
-margin-bottom:20px;
+border-radius:18px;
+backdrop-filter:blur(12px);
+border:1px solid rgba(255,255,255,0.12);
 }
 
 h1{
 margin-bottom:20px;
+font-size:30px;
+}
+
+.videoWrap{
+position:relative;
 }
 
 video{
 width:100%;
-border-radius:12px;
+border-radius:15px;
 background:black;
+}
+
+.scanBox{
+position:absolute;
+top:12%;
+left:10%;
+width:80%;
+height:72%;
+border:3px solid #00ff88;
+border-radius:15px;
+box-shadow:0 0 25px #00ff88;
+pointer-events:none;
+}
+
+.scanLine{
+position:absolute;
+top:15%;
+left:10%;
+width:80%;
+height:3px;
+background:#00ff88;
+box-shadow:0 0 15px #00ff88;
+animation:scanMove 2s linear infinite;
+}
+
+@keyframes scanMove{
+
+0%{
+transform:translateY(0px);
+}
+
+50%{
+transform:translateY(260px);
+}
+
+100%{
+transform:translateY(0px);
+}
+
 }
 
 button{
 width:100%;
 padding:15px;
-margin-top:15px;
 border:none;
 border-radius:10px;
-background:#00b894;
+background:#003049;
 color:white;
 font-size:16px;
 font-weight:bold;
+margin-top:15px;
 cursor:pointer;
 }
 
 button:hover{
-background:#009e7f;
+background:#004d73;
 }
 
 .result{
 margin-top:20px;
-background:#0f141c;
-padding:15px;
-border-radius:12px;
+background:rgba(0,0,0,0.45);
+padding:18px;
+border-radius:14px;
 line-height:2;
+font-size:17px;
 }
 
 .result span{
@@ -86,20 +138,8 @@ color:#ff4d4d;
 font-weight:bold;
 }
 
-.scanBox{
-position:absolute;
-top:12%;
-left:8%;
-width:84%;
-height:72%;
-border:3px solid #00ff88;
-border-radius:12px;
-box-shadow:0 0 20px #00ff88;
-pointer-events:none;
-}
-
-.videoWrap{
-position:relative;
+#canvas{
+display:none;
 }
 
 </style>
@@ -113,7 +153,7 @@ position:relative;
 <div class="card">
 
 <h1>
-🚗 JST Smart Disc OCR Reader
+🚗 JST Smart Disc Recognition System
 </h1>
 
 <div class="videoWrap">
@@ -127,35 +167,34 @@ muted>
 
 <div class="scanBox"></div>
 
+<div class="scanLine"></div>
+
 </div>
 
 <button onclick="captureDisc()">
-TAKE DISC PHOTO
+SCAN VEHICLE DISC
 </button>
 
 <p
 id="status"
 style="margin-top:15px;">
-Starting Camera...
+Starting camera...
 </p>
 
 <div
 class="result"
 id="output">
 
-Plate :
-<span>-</span><br>
-
 Licence Number :
-<span>-</span><br>
-
-Vehicle Make :
 <span>-</span><br>
 
 VIN :
 <span>-</span><br>
 
 Engine Number :
+<span>-</span><br>
+
+Vehicle Make :
 <span>-</span><br>
 
 Expiry Date :
@@ -167,18 +206,29 @@ Expiry Date :
 
 </div>
 
+<canvas id="canvas"></canvas>
+
 <script>
 
-/* CAMERA */
+/* =========================
+ELEMENTS
+========================= */
 
 const video =
 document.getElementById("video");
+
+const canvas =
+document.getElementById("canvas");
 
 const statusText =
 document.getElementById("status");
 
 const output =
 document.getElementById("output");
+
+/* =========================
+START CAMERA
+========================= */
 
 async function startCamera(){
 
@@ -219,69 +269,49 @@ statusText.innerHTML =
 
 startCamera();
 
-/* OCR READER */
+/* =========================
+IMAGE ENHANCEMENT
+========================= */
 
-window.captureDisc = async function(){
+function enhanceImage(ctx,width,height){
 
-try{
+const imageData =
+ctx.getImageData(0,0,width,height);
 
-statusText.innerHTML =
-"Reading Disc...";
+const data =
+imageData.data;
 
-/* TAKE PHOTO */
+/* SHARPEN + CONTRAST */
 
-const canvas =
-document.createElement("canvas");
+for(let i=0;i<data.length;i+=4){
 
-canvas.width =
-video.videoWidth;
+let r = data[i];
+let g = data[i+1];
+let b = data[i+2];
 
-canvas.height =
-video.videoHeight;
+let avg = (r+g+b)/3;
 
-const ctx =
-canvas.getContext("2d");
+/* increase contrast */
 
-ctx.drawImage(
-video,
-0,
-0,
-canvas.width,
-canvas.height
-);
+avg = avg > 120 ? 255 : 0;
 
-/* OCR */
-
-const result =
-await Tesseract.recognize(
-
-canvas.toDataURL("image/jpeg",1),
-
-"eng",
-
-{
-logger:m=>{
-
-if(m.status==="recognizing text"){
-
-statusText.innerHTML =
-"Scanning "
-+
-Math.round(m.progress*100)
-+
-"%";
+data[i] = avg;
+data[i+1] = avg;
+data[i+2] = avg;
 
 }
 
+ctx.putImageData(imageData,0,0);
+
 }
-}
 
-);
+/* =========================
+EXTRACT DISC DATA
+========================= */
 
-/* CLEAN TEXT */
+function extractData(text){
 
-let text =
-(result.data.text || "")
+text = text
 .toUpperCase()
 .replace(/\n/g," ")
 .replace(/\s+/g," ")
@@ -289,93 +319,69 @@ let text =
 
 console.log(text);
 
-/* =====================
-EXTRACT DATA
-===================== */
-
-let plate = "";
-let licence = "";
-let make = "";
+let licenceNo = "";
 let vin = "";
-let engine = "";
-let expiry = "";
+let engineNo = "";
+let make = "";
+let expiryDate = "";
 
-/* PLATE */
+/* LICENCE NUMBER */
 
-const platePatterns = [
+const licencePatterns = [
 
-/\b[A-Z]{2,3}\d{2,6}[A-Z]{0,2}\b/g,
-/\b[A-Z]{2}\s\d{3}\s[A-Z]{2}\b/g,
-/\b[A-Z]{3}\s\d{3}\b/g
+/LISENSIENR\.?\s*([A-Z0-9]+)/,
+/LICENCE\s*NO\.?\s*([A-Z0-9]+)/,
+/LICENCE\s*NR\.?\s*([A-Z0-9]+)/
 
 ];
 
-for(const pattern of platePatterns){
+for(let p of licencePatterns){
 
-const match =
-text.match(pattern);
+const m = text.match(p);
 
-if(match){
+if(m){
 
-plate =
-match[0]
-.replace(/\s/g,"");
-
+licenceNo = m[1];
 break;
 
 }
 
 }
 
-/* LICENCE NUMBER */
-
-const licenceMatch =
-text.match(/\b\d{6,12}\b/);
-
-if(licenceMatch){
-
-licence =
-licenceMatch[0];
-
-}
-
 /* VIN */
 
 const vinMatch =
-text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/);
+text.match(/VIN\s*([A-HJ-NPR-Z0-9]{10,20})/);
 
 if(vinMatch){
 
-vin =
-vinMatch[0];
+vin = vinMatch[1];
 
 }
 
 /* ENGINE */
 
-const engineMatch =
-text.match(/\b[A-Z0-9]{6,15}\b/);
+const enginePatterns = [
 
-if(engineMatch){
+/ENGINE\s*NO\.?\s*([A-Z0-9]+)/,
+/ENJINNR\.?\s*([A-Z0-9]+)/
 
-engine =
-engineMatch[0];
+];
 
-}
+for(let p of enginePatterns){
 
-/* EXPIRY DATE */
+const m = text.match(p);
 
-const expiryMatch =
-text.match(/\b\d{2}\/\d{2}\/\d{4}\b/);
+if(m){
 
-if(expiryMatch){
-
-expiry =
-expiryMatch[0];
+engineNo = m[1];
+break;
 
 }
 
-/* VEHICLE MAKE */
+}
+
+/* MAKE */
 
 const brands = [
 
@@ -414,27 +420,121 @@ break;
 
 }
 
-/* SHOW RESULTS */
+/* EXPIRY DATE */
+
+const expiryMatch =
+text.match(/\b20\d{2}-\d{2}-\d{2}\b/);
+
+if(expiryMatch){
+
+expiryDate = expiryMatch[0];
+
+}
+
+return{
+
+licenceNo,
+vin,
+engineNo,
+make,
+expiryDate
+
+};
+
+}
+
+/* =========================
+SCAN DISC
+========================= */
+
+window.captureDisc = async function(){
+
+try{
+
+statusText.innerHTML =
+"Capturing disc...";
+
+/* TAKE PHOTO */
+
+canvas.width =
+video.videoWidth;
+
+canvas.height =
+video.videoHeight;
+
+const ctx =
+canvas.getContext("2d");
+
+ctx.drawImage(
+video,
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+/* IMPROVE IMAGE */
+
+enhanceImage(
+ctx,
+canvas.width,
+canvas.height
+);
+
+/* OCR */
+
+const result =
+await Tesseract.recognize(
+
+canvas.toDataURL("image/jpeg",1),
+
+"eng",
+
+{
+logger:m=>{
+
+if(m.status==="recognizing text"){
+
+statusText.innerHTML =
+"Processing "
++
+Math.round(m.progress*100)
++
+"%";
+
+}
+
+}
+}
+
+);
+
+const text =
+result.data.text || "";
+
+/* EXTRACT */
+
+const data =
+extractData(text);
+
+/* SHOW */
 
 output.innerHTML = `
 
-Plate :
-<span>${plate || "-"}</span><br>
-
 Licence Number :
-<span>${licence || "-"}</span><br>
-
-Vehicle Make :
-<span>${make || "-"}</span><br>
+<span>${data.licenceNo || "-"}</span><br>
 
 VIN :
-<span>${vin || "-"}</span><br>
+<span>${data.vin || "-"}</span><br>
 
 Engine Number :
-<span>${engine || "-"}</span><br>
+<span>${data.engineNo || "-"}</span><br>
+
+Vehicle Make :
+<span>${data.make || "-"}</span><br>
 
 Expiry Date :
-<span>${expiry || "-"}</span>
+<span>${data.expiryDate || "-"}</span>
 
 `;
 
